@@ -1,0 +1,72 @@
+name: Publish Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    name: Publish to PyPI
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/camt053-loader-mt940
+    permissions:
+      contents: write
+      id-token: write  # OIDC for PyPI trusted publishing
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Verify tag matches package version
+        run: |
+          # Parse the version literal directly rather than importing
+          # the package (which would transitively require openpyxl +
+          # camt053 to be installed first).
+          TAG="${GITHUB_REF_NAME#v}"
+          PKG_INIT=$(grep -E '^__version__' camt053_loader_mt940/__init__.py | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+          PKG_TOML=$(grep -E '^version' pyproject.toml | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+          echo "Tag: $TAG | __init__.py: $PKG_INIT | pyproject.toml: $PKG_TOML"
+          if [ "$TAG" != "$PKG_INIT" ] || [ "$PKG_INIT" != "$PKG_TOML" ]; then
+            echo "Version mismatch; aborting." >&2
+            exit 1
+          fi
+
+      - name: Install build tooling
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+
+      - name: Build sdist + wheel
+        run: python -m build
+
+      - name: Twine check
+        run: twine check dist/*
+
+      - name: Extract release notes
+        id: notes
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          NOTE_PATH="releases/v${VERSION}.md"
+          if [ ! -f "$NOTE_PATH" ]; then
+            echo "Release notes missing at $NOTE_PATH" >&2
+            exit 1
+          fi
+          echo "path=$NOTE_PATH" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: ${{ steps.notes.outputs.path }}
+          files: dist/*
+
+      - name: Publish to PyPI via OIDC trusted publishing
+        uses: pypa/gh-action-pypi-publish@release/v1
