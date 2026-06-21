@@ -27,7 +27,11 @@ reversal builder, MCP and LSP servers).
 - [Quick Start](#quick-start)
 - [Supported Fields](#supported-fields)
 - [Examples](#examples)
+- [The camt053 suite](#the-camt053-suite)
+- [When not to use camt053-loader-mt940](#when-not-to-use-camt053-loader-mt940)
 - [Development](#development)
+- [Security](#security)
+- [Documentation](#documentation)
 - [License](#license)
 - [Contributing](#contributing)
 - [Acknowledgements](#acknowledgements)
@@ -116,16 +120,6 @@ extensions) are **silently ignored**, so future SWIFT additions do
 not break parsing. This follows Postel's law: be liberal in what you
 accept.
 
-### Out of scope
-
-- **MT941 / MT942** intraday-balance and intermediate-statement messages.
-  Add a separate loader if you need them; the data model supports it.
-- **Bank-specific `:86:` sub-fields** (e.g. Deutsche Bank's
-  `?20`/`?30`/`?32` GVC codes). The value is preserved verbatim in
-  `additional_info`; downstream tooling can parse it if needed.
-- **MT940-encrypted payloads.** Decrypt upstream before passing to
-  this loader.
-
 ## Examples
 
 Two runnable examples live in `examples/`:
@@ -136,6 +130,45 @@ Two runnable examples live in `examples/`:
   MT940 in, Excel `.xlsx` out (requires `camt053-writer-xlsx`).
 
 Both are exercised in CI on every commit.
+
+## The camt053 suite
+
+`camt053-loader-mt940` is part of a set of independently installable
+packages built around the [`camt053`][core] library — pick whichever
+ones your stack needs:
+
+| Package | Role |
+| :--- | :--- |
+| [`camt053`](https://pypi.org/project/camt053/) | Core library + CLI + FastAPI REST API |
+| [`camt053-mcp`](https://pypi.org/project/camt053-mcp/) | Model Context Protocol server (for AI agents) |
+| [`camt053-lsp`](https://pypi.org/project/camt053-lsp/) | Language Server Protocol server (for editors) |
+| [`camt053-writer-xlsx`](https://pypi.org/project/camt053-writer-xlsx/) | Excel `.xlsx` writer for parsed statements |
+| [`camt053-loader-mt940`](https://pypi.org/project/camt053-loader-mt940/) | **SWIFT MT940 → camt.053 loader (this package)** |
+
+```mermaid
+flowchart LR
+    A["MT940 text"] -->|parse_mt940| B["camt053-loader-mt940"]
+    B -->|ParsedDocument| C["camt053"]
+    C -->|writer / validator / reversal / MCP / LSP| D["Downstream consumers"]
+```
+
+## When not to use camt053-loader-mt940
+
+- **You already have native camt.053 input.** Use the camt053 core
+  parser directly — this loader is the bridge for legacy MT940-only
+  data sources, not an alternative for native camt.05x.
+- **You need MT941 / MT942** (intraday-balance / intermediate-statement
+  messages). Out of scope today; the data model supports adding them
+  if you'd like to contribute a separate loader.
+- **You need bank-specific `:86:` sub-field parsing** (e.g. Deutsche
+  Bank's `?20` / `?30` / `?32` GVC codes). The raw `:86:` value is
+  preserved verbatim in `TransactionDetails.additional_info`;
+  downstream tooling can parse it if needed.
+- **You need direct ISO return-reason mapping for `RD` / `RC`** lines.
+  Currently `reversal_indicator=True` is set; mapping to ISO
+  `ExternalReturnReasonCode` is on the v0.0.2 roadmap.
+- **Your MT940 is PGP / GPG encrypted.** Decrypt upstream and pass
+  the plaintext to the loader.
 
 ## Development
 
@@ -148,6 +181,26 @@ pytest                          # 100% line + branch coverage gate
 interrogate camt053_loader_mt940  # 100% docstring gate
 mypy camt053_loader_mt940       # strict
 ```
+
+## Security
+
+`camt053-loader-mt940` parses a flat text format with no XML envelope
+— the XXE / billion-laughs surface lives upstream in the `camt053`
+core (defusedxml + xml_guard). Field regexes are anchored and
+bounded, so catastrophic backtracking is not a concern. Reporting
+practice, supported versions, and supply-chain posture (PyPI Trusted
+Publishing, sigstore attestations, signed tags) are documented in
+[`SECURITY.md`](SECURITY.md). Vulnerabilities go via GitHub Private
+Vulnerability Reporting, not public issues.
+
+## Documentation
+
+- [`README.md`](README.md) — this file
+- [`CHANGELOG.md`](CHANGELOG.md) — release notes
+- [`SECURITY.md`](SECURITY.md) — disclosure + supported versions
+- [`SUPPORT.md`](SUPPORT.md) — how to get help
+- [`MAINTAINERS.md`](MAINTAINERS.md) — who can merge
+- [`examples/`](examples/) — runnable scripts, exercised in CI
 
 ## License
 
