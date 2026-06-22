@@ -18,6 +18,6 @@ LSP servers) then work without further changes.
 
 from camt053_loader_mt940.loader import parse_mt940
 
-__version__ = "0.0.1"
+__version__ = "0.0.7"
 
 __all__ = ["parse_mt940", "__version__"]

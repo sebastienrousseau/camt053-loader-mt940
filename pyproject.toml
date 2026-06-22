@@ -1,6 +1,6 @@
 [project]
 name = "camt053-loader-mt940"
-version = "0.0.1"
+version = "0.0.7"
 description = "Convert legacy SWIFT MT940 bank statements to camt.053 ParsedDocument."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -28,7 +28,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "camt053 >= 0.0.5, < 1",
+    "camt053 >= 0.0.6, < 1",
 ]
 
 [project.optional-dependencies]

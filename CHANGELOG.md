@@ -8,11 +8,11 @@ This package's version follows the [`camt053`](https://github.com/sebastienrouss
 suite (`camt053`, `camt053-mcp`, `camt053-lsp`, `camt053-writer-xlsx`); a
 `0.0.X` release of this package targets the `0.0.X` release of `camt053`.
 
-## [0.0.1] - 2026-06-21
+## [0.0.7] - 2026-06-22
 
 ### Added
 
-Initial release of `camt053-loader-mt940`, a SWIFT MT940 → camt.053
+First PyPI release of `camt053-loader-mt940`, a SWIFT MT940 → camt.053
 `ParsedDocument` loader. Companion to the
 [`camt053`](https://github.com/sebastienrousseau/camt053) core library.
 
