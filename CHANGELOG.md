@@ -8,6 +8,12 @@ This package's version follows the [`camt053`](https://github.com/sebastienrouss
 suite (`camt053`, `camt053-mcp`, `camt053-lsp`, `camt053-writer-xlsx`); a
 `0.0.X` release of this package targets the `0.0.X` release of `camt053`.
 
+## [0.0.9] - 2026-06-27
+
+### Changed
+
+- **Version** — suite-wide lockstep bump to `0.0.9`. No functional changes.
+
 ## [0.0.7] - 2026-06-22
 
 ### Added
