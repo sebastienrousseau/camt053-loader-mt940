@@ -8,6 +8,21 @@ This package's version follows the [`camt053`](https://github.com/sebastienrouss
 suite (`camt053`, `camt053-mcp`, `camt053-lsp`, `camt053-writer-xlsx`); a
 `0.0.X` release of this package targets the `0.0.X` release of `camt053`.
 
+## [0.0.13] - 2026-07-16
+
+### Added
+
+- **Load/stress test suite** (`tests/test_stress.py`, marker `perf`,
+  excluded from the default coverage-gated run): sustained concurrent
+  MT940 → camt.053 conversions, a 10,000-entry statement bound, and a
+  `tracemalloc` soak loop asserting bounded memory growth.
+
+### Changed
+
+- **Version** — suite-wide lockstep bump to `0.0.13` (aligning with
+  the `camt053` suite; `0.0.10`–`0.0.12` were not released for this
+  package). No functional changes.
+
 ## [0.0.9] - 2026-06-27
 
 ### Changed
