@@ -16,7 +16,7 @@
 ready for every downstream consumer in the suite (writer, validator,
 reversal builder, MCP and LSP servers).
 
-> **Latest release: v0.0.13.** SWIFT MT940 is scheduled for retirement
+> **Latest release: v0.0.14.** SWIFT MT940 is scheduled for retirement
 > in **November 2028**. This loader bridges the 2-year window where
 > banks still produce MT940 but downstream tooling expects camt.053.
 
