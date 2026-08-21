@@ -10,6 +10,27 @@ permissions:
   contents: read
 
 jobs:
+  # release.yml refuses to publish without releases/v<version>.md, but it
+  # only finds out after a tag has been pushed — which is exactly how
+  # v0.0.16 failed, on an already-public tag. Same check, moved to where
+  # it costs a red PR instead of a bad tag.
+  release-notes:
+    name: Release Notes Present
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Every version must have release notes
+        run: |
+          set -euo pipefail
+          VERSION=$(grep -E '^version' pyproject.toml | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+          NOTE_PATH="releases/v${VERSION}.md"
+          if [ ! -f "$NOTE_PATH" ]; then
+            echo "::error::pyproject.toml declares ${VERSION} but ${NOTE_PATH} does not exist."
+            echo "::error::release.yml requires it and will fail after the tag is pushed."
+            exit 1
+          fi
+          echo "Found ${NOTE_PATH} for version ${VERSION}"
+
   test:
     name: Test (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
