@@ -8,6 +8,29 @@ This package's version follows the [`camt053`](https://github.com/sebastienrouss
 suite (`camt053`, `camt053-mcp`, `camt053-lsp`, `camt053-writer-xlsx`); a
 `0.0.X` release of this package targets the `0.0.X` release of `camt053`.
 
+## [0.0.16] - 2026-08-21
+
+Suite release with `camt053` 0.0.16. No functional change in this
+package.
+
+### Changed
+
+- **Version aligned to the suite.** Every package in the `camt053`
+  suite ships the same number, so there is no compatibility table to
+  consult. See `camt053.suite`, which a daily job checks against PyPI.
+
+- **The `camt053` floor moves to `>=0.0.16`,** from `>=0.0.6` — a bound
+  that had not been revisited in nine releases, because it still
+  resolved and so never complained.
+
+### Added
+
+- **A version-sync test.** `pyproject.toml` and `__init__.py` state the
+  version independently and nothing compared them, so a release could
+  ship with the two disagreeing. It nearly did: the first attempt at
+  this release landed `__init__.py` at 0.0.16 against a `pyproject.toml`
+  still on 0.0.14, and every check passed.
+
 ## [0.0.14] - 2026-07-16
 
 ### Changed
