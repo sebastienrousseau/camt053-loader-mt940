@@ -8,6 +8,70 @@ This package's version follows the [`camt053`](https://github.com/sebastienrouss
 suite (`camt053`, `camt053-mcp`, `camt053-lsp`, `camt053-writer-xlsx`); a
 `0.0.X` release of this package targets the `0.0.X` release of `camt053`.
 
+## [0.0.18] - 2026-08-28
+
+**Breaking.** A statement whose `:25:` does not identify an account is now
+rejected instead of parsed.
+
+### Changed
+
+- **`parse_mt940` rejects a missing or empty `:25:` by default.** It
+  previously returned a `ParsedDocument` whose account carried a `None`
+  IBAN and BIC — entries belonging to no account.
+
+  That output was invalid twice over. `:25:` is mandatory under the SWIFT
+  MT940 specification, and `<Stmt><Acct>` is `[1..1]` in the camt.053 model
+  this loader exists to produce, so the document could never have passed
+  schema validation downstream. It also had no business use: a statement
+  with no account cannot be routed or booked by an ERP.
+
+  The practical cost was worse than the theory. The `None` account was a
+  poison pill that pushed `if account is None` onto every consumer —
+  `camt053-writer-xlsx`, `camt053-mcp`, any agent calling them — and anyone
+  following the quick start into `document.statements[0].account.iban` got
+  `AttributeError: 'NoneType' object has no attribute 'iban'` deep inside
+  their own code rather than a clear message at the parse boundary.
+
+- **Three shapes are rejected, not one.** Seeing the tag is not the same as
+  being told which account, so a bare `:25:` and a `:25:BIC/` carrying a
+  servicer but no account number are refused alongside the absent case. A
+  presence-only check would have been defeated by either.
+
+  A proprietary account number is still accepted: the rule is that *some*
+  identifier is present, not that it is an IBAN.
+
+### Added
+
+- **`strict` keyword argument**, defaulting to `True`. Pass `strict=False`
+  for genuinely non-compliant legacy feeds where the account is known from
+  the filename or the SFTP folder and will be attached afterwards.
+
+  Keyword-only on purpose: `parse_mt940(text, False)` raises `TypeError`
+  rather than quietly reinstating the old behaviour at a call site that
+  looks like it is passing an option.
+
+- **`MissingMandatoryFieldError`**, exported from the package. It subclasses
+  `ValueError` deliberately — every error this module raised before now was
+  a bare `ValueError`, and callers already catch that. Narrowing the type
+  would have been a second breaking change on top of the one that matters.
+  It carries `.tag` and `.description`.
+
+### Known gap
+
+`:28C:`, `:60F:` and `:62F:` are equally mandatory under MT940, and equally
+mandatory in camt.053 — `<Stmt><Id>` is `[1..1]` and `<Stmt><Bal>` is
+`[1..n]`. All three are still accepted when absent. `strict` does not yet
+cover them; extending it is a matter of adding rows to
+`_MANDATORY_UNDER_STRICT`, but it widens the breaking change beyond what was
+decided, so it waits.
+
+### Migration
+
+If you parse statements from a source that omits `:25:`, either pass
+`strict=False` and attach the account yourself, or fix the source. Catching
+`ValueError` already works; catch `MissingMandatoryFieldError` to
+distinguish this case.
+
 ## [0.0.17] - 2026-08-28
 
 The first repository brought onto the **suite conformance gate**, and the

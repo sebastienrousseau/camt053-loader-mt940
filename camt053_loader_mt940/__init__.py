@@ -16,8 +16,11 @@ camt053 consumers (the writer, validator, reversal builder, MCP and
 LSP servers) then work without further changes.
 """
 
-from camt053_loader_mt940.loader import parse_mt940
+from camt053_loader_mt940.loader import (
+    MissingMandatoryFieldError,
+    parse_mt940,
+)
 
-__version__ = "0.0.17"
+__version__ = "0.0.18"
 
-__all__ = ["parse_mt940", "__version__"]
+__all__ = ["MissingMandatoryFieldError", "parse_mt940", "__version__"]

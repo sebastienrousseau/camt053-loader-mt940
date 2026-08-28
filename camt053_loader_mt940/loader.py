@@ -210,15 +210,82 @@ def _format_yymmdd_with_year_hint(
     return _format_yymmdd(value_yymmdd[0:2] + booking_mmdd)
 
 
+# ─── Errors ─────────────────────────────────────────────────────────────────
+
+
+class MissingMandatoryFieldError(ValueError):
+    """A tag the MT940 specification requires was absent.
+
+    Subclasses :class:`ValueError` deliberately. Every error this module
+    raised before this class existed was a bare ``ValueError``, and callers
+    already catch that; narrowing the type would have been a second breaking
+    change on top of the one that matters.
+
+    Attributes:
+        tag: The MT940 tag at fault, without colons — ``"25"``.
+        description: Its name in the specification.
+    """
+
+    def __init__(self, tag: str, description: str, problem: str) -> None:
+        """Build the error.
+
+        Args:
+            tag: The MT940 tag at fault, without colons — ``"25"``.
+            description: Its name in the specification.
+            problem: What was wrong with it, as a clause completing
+                "...and {problem}" — ``"it is absent"``.
+        """
+        self.tag = tag
+        self.description = description
+        super().__init__(
+            f"Tag :{tag}: ({description}) is mandatory under the MT940 "
+            f"specification, and {problem}. The resulting statement could "
+            f"not be reconciled to an account. Pass strict=False if the "
+            f"account is known from outside the file."
+        )
+
+
+#: Tags rejected under ``strict=True`` when absent *or* empty, as
+#: ``(tag, description)``.
+#:
+#: Two traps are worth recording, because the obvious implementation falls
+#: into both. Presence cannot be read from the assembled model —
+#: ``Statement()`` starts with an empty ``Account()`` rather than ``None``,
+#: so ``statement.account is not None`` is true whether or not ``:25:`` was
+#: ever present, and a check written that way passes its own tests while
+#: rejecting nothing. And presence of the tag is not enough either: a bare
+#: ``:25:`` with no value parses to an account carrying no identifier at
+#: all, which is the same unreconcilable statement by a different route.
+#:
+#: Only ``:25:`` is listed. ``:28C:`` (statement number), ``:60F:``
+#: (opening balance) and ``:62F:`` (closing balance) are equally mandatory
+#: under the MT940 specification, and are equally mandatory in the camt.053
+#: model this loader targets — ``<Stmt><Id>`` is [1..1] and ``<Stmt><Bal>``
+#: is [1..n]. All three are still accepted when absent, producing a
+#: statement with a ``None`` id or a short balance list.
+#:
+#: That is a known gap, recorded here rather than left to be rediscovered.
+#: Closing it is a matter of adding rows, but it widens the breaking change
+#: beyond the one that was asked for, so it waits for a decision.
+_MANDATORY_UNDER_STRICT: tuple[tuple[str, str], ...] = (
+    ("25", "Account Identification"),
+)
+
+
 # ─── Top-level parser ───────────────────────────────────────────────────────
 
 
-def parse_mt940(text: str) -> ParsedDocument:
+def parse_mt940(text: str, *, strict: bool = True) -> ParsedDocument:
     """Parse an MT940 payload into a :class:`~camt053.models.ParsedDocument`.
 
     Args:
         text: The MT940 payload as a string. Trailing whitespace and
             CRLF/LF differences are tolerated.
+        strict: Reject a payload whose ``:25:`` is absent, empty, or
+            carries a servicer BIC with no account number. Defaults to
+            ``True``. Pass ``False`` only when the account is known from
+            outside the file — a filename, or the SFTP folder it landed
+            in — and will be attached afterwards.
 
     Returns:
         A :class:`~camt053.models.ParsedDocument` whose
@@ -226,15 +293,27 @@ def parse_mt940(text: str) -> ParsedDocument:
         camt.053 equivalent of an MT940 final-statement message).
 
     Raises:
-        ValueError: If a required field is missing or a balance /
-            statement line does not match the expected format. The
-            error message identifies the offending field.
+        MissingMandatoryFieldError: If ``:25:`` is absent or identifies
+            no account, and ``strict`` is ``True``. A subclass of
+            :class:`ValueError`.
+        ValueError: If ``:20:`` is absent, or a balance or statement line
+            does not match the expected format. The message identifies
+            the offending tag.
+
+    Note:
+        ``strict`` currently governs ``:25:`` only. ``:28C:``, ``:60F:``
+        and ``:62F:`` are equally mandatory under the MT940 specification
+        and are still accepted when absent; that is a known gap rather
+        than a decision, and widening the check is a one-line change to
+        :data:`_MANDATORY_UNDER_STRICT`.
     """
     statement = Statement()
     msg_id: str | None = None
     last_entry: Entry | None = None
+    seen: set[str] = set()
 
     for tag, value in _iter_fields(text):
+        seen.add(tag)
         if tag == "20":
             msg_id = value or None
         elif tag == "25":
@@ -255,6 +334,24 @@ def parse_mt940(text: str) -> ParsedDocument:
 
     if msg_id is None:
         raise ValueError("MT940 payload missing required :20: reference")
+
+    if strict:
+        for tag, description in _MANDATORY_UNDER_STRICT:
+            if tag not in seen:
+                raise MissingMandatoryFieldError(
+                    tag, description, "it is absent"
+                )
+        # A bare ``:25:`` is present but identifies nothing. The BIC alone
+        # does not count: it names the servicer, not the account, and a
+        # statement that says which bank but not which account reconciles
+        # against just as little as one that says neither.
+        account = statement.account
+        if account is None or not (account.iban or account.other_id):
+            raise MissingMandatoryFieldError(
+                "25",
+                "Account Identification",
+                "it carries no account number",
+            )
 
     return ParsedDocument(
         message_type="camt.053.001.08",

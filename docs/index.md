@@ -25,13 +25,14 @@ the code after it**, which is the whole point.
 
 ## The API
 
-### `parse_mt940(text: str) -> ParsedDocument`
+### `parse_mt940(text: str, *, strict: bool = True) -> ParsedDocument`
 
 | | |
 |---|---|
 | **`text`** | The MT940 payload. Trailing whitespace and CRLF/LF differences are tolerated, so a file read on Windows and one read on Linux parse identically. |
+| **`strict`** | Default `True`. Rejects a statement whose `:25:` is absent, empty, or names a servicer BIC with no account number. Pass `False` only when the account is known from outside the file. |
 | **Returns** | A `ParsedDocument` whose `message_type` is `"camt.053.001.08"` — the closest direct camt.053 equivalent of an MT940 final-statement message. |
-| **Raises** | `ValueError` if `:20:` is absent, or if a balance or statement line does not match the expected format. **The message names the offending tag**, because a statement file that fails to parse at 3am is only actionable if the error says which line. See [What is *not* rejected](#what-is-not-rejected). |
+| **Raises** | `MissingMandatoryFieldError` (a `ValueError`) if `:25:` identifies no account under `strict`. `ValueError` if `:20:` is absent, or a balance or statement line does not match the expected format. **The message names the offending tag**, because a statement file that fails to parse at 3am is only actionable if the error says which line. |
 
 ## What you get back
 
@@ -75,27 +76,64 @@ Use `amount_decimal`, not `amount`, for anything arithmetic. `amount` is the
 string as it appeared; `amount_decimal` is a `Decimal`. Money in a float is a
 rounding error waiting for a reconciliation to find it.
 
-## What is *not* rejected
+## Mandatory fields
 
-`:20:` is the only tag whose absence raises. **`:25:` is optional**, and a
-payload without it parses successfully to an account whose `iban` and
-`servicer_bic` are both `None`:
-
-```python
-document = parse_mt940(payload_without_25)
-document.statements[0].account.iban    # None — entries belong to no account
-```
-
-That is deliberate leniency, not an oversight, and it is pinned by a
-regression test so a future change has to be a decision rather than an
-accident. But **check it if you reconcile**: entries attributed to a `None`
-account will match nothing, and the failure shows up as an unexplained
-reconciliation break rather than as a parse error.
+`:20:` and `:25:` are both required. `:25:` has been enforced since **0.0.18**;
+before that a statement without it parsed into an account whose IBAN was
+`None`.
 
 ```python
-if document.statements[0].account.iban is None:
-    raise ValueError("statement carries no :25: account identification")
+from camt053_loader_mt940 import MissingMandatoryFieldError, parse_mt940
+
+try:
+    document = parse_mt940(payload)
+except MissingMandatoryFieldError as exc:
+    print(exc.tag)   # "25"
 ```
+
+**Why it is an error rather than a `None`.** `:25:` is mandatory in the MT940
+specification, and `<Stmt><Acct>` is `[1..1]` in the camt.053 model this
+loader targets — so the old output was not a valid `ParsedDocument` either. A
+statement with no account cannot be routed or booked by an ERP, so passing it
+downstream added no value and pushed a defensive `if account is None` onto
+every consumer. Anyone following the quick start straight into
+`document.statements[0].account.iban` got `AttributeError: 'NoneType' object
+has no attribute 'iban'` deep in their own code instead of a clear message at
+the boundary.
+
+Three shapes are rejected, not one. Seeing the tag is not the same as being
+told which account:
+
+| `:25:` | Result |
+|---|---|
+| absent | rejected — *is absent* |
+| `:25:` (bare) | rejected — *carries no account number* |
+| `COBADEFFXXX/` | rejected — names the bank, not the account |
+| `COBADEFFXXX/DE89…` | accepted |
+| `DE89…` | accepted |
+| `1234567890` | accepted — not every account has an IBAN |
+
+### `strict=False`
+
+For genuinely non-compliant legacy feeds where the account comes from the
+filename or the SFTP folder rather than the file:
+
+```python
+document = parse_mt940(payload, strict=False)
+document.statements[0].account.iban = known_iban   # your obligation now
+```
+
+It is keyword-only, so `parse_mt940(text, False)` raises `TypeError` rather
+than quietly reinstating the old behaviour at a call site that looks like it
+is passing an option.
+
+### Still accepted, and arguably should not be
+
+`:28C:`, `:60F:` and `:62F:` are equally mandatory under MT940, and equally
+mandatory in camt.053 — `<Stmt><Id>` is `[1..1]`, `<Stmt><Bal>` is `[1..n]`.
+All three are currently accepted when absent, producing a statement with a
+`None` id or a short balance list. `strict` does not yet cover them. That is a
+recorded gap rather than a decision.
 
 ## Field mapping
 
