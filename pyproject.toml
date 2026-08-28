@@ -1,6 +1,6 @@
 [project]
 name = "camt053-loader-mt940"
-version = "0.0.16"
+version = "0.0.17"
 description = "Convert legacy SWIFT MT940 bank statements to camt.053 ParsedDocument."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -56,6 +56,12 @@ packages = ["camt053_loader_mt940"]
 
 [tool.ruff]
 line-length = 80
+# Generated and vendored from one canonical copy shared by all 32 repositories
+# in the suite, and checksummed by its own test. The suite uses three different
+# line lengths, so letting each repository's formatter rewrite it would make
+# the checksum unsatisfiable everywhere. Excluded for the same reason any
+# generated file is.
+extend-exclude = ["tests/test_suite_conformance.py"]
 target-version = "py310"
 
 [tool.ruff.lint]

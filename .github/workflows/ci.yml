@@ -63,6 +63,13 @@ jobs:
       - name: Enforce 100% docstring coverage
         run: interrogate -c pyproject.toml camt053_loader_mt940
 
+      # The benchmark asserts no timing threshold -- wall-clock numbers are
+      # not comparable between runners. This proves it still executes
+      # against the current API, so it cannot rot into documentation that
+      # reads as verified and is not.
+      - name: Run the benchmark
+        run: python benches/bench_parse_mt940.py --quick
+
       - name: Run examples end-to-end
         run: |
           for example in examples/*.py; do
@@ -88,10 +95,10 @@ jobs:
           pip install -e ".[dev]"
 
       - name: Ruff check
-        run: ruff check camt053_loader_mt940/ tests/ examples/
+        run: ruff check camt053_loader_mt940/ tests/ examples/ benches/
 
       - name: Ruff format check
-        run: ruff format --check camt053_loader_mt940/ tests/ examples/
+        run: ruff format --check camt053_loader_mt940/ tests/ examples/ benches/
 
       - name: Mypy
         run: mypy camt053_loader_mt940/

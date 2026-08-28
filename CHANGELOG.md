@@ -8,6 +8,71 @@ This package's version follows the [`camt053`](https://github.com/sebastienrouss
 suite (`camt053`, `camt053-mcp`, `camt053-lsp`, `camt053-writer-xlsx`); a
 `0.0.X` release of this package targets the `0.0.X` release of `camt053`.
 
+## [0.0.17] - 2026-08-28
+
+The first repository brought onto the **suite conformance gate**, and the
+template for the other 31.
+
+### Added
+
+- **`tests/test_suite_conformance.py`** — 33 invariants shared by every
+  repository in the suite, vendored from one canonical copy and checksummed
+  by its own test. Each assertion exists because the suite has already
+  shipped the failure it describes: a release published with `__version__`
+  reporting the previous version, an extra that could not be installed, an
+  advisory fix bumped in the tree but never tagged, a package that sat at
+  73% coverage because nothing was watching. None were visible from inside
+  the repository that carried them.
+
+  Editing the vendored copy fails `test_this_file_is_the_canonical_copy` by
+  design — no repository can quietly weaken a shared gate.
+
+- **`benches/bench_parse_mt940.py`** — throughput across the two axes that
+  actually move: entries within a statement, and statements within a file.
+
+  It asserts no timing threshold, because wall-clock numbers are not
+  comparable between machines. What it exposes is **shape**: the `ns/entry`
+  column stays flat if the parser is linear and climbs if it has gone
+  superlinear — the failure no unit test sees and a month-end file finds.
+  CI runs `--quick`, so a benchmark that stops compiling fails the build
+  instead of rotting into documentation that reads as verified.
+
+- **`tests/test_regression.py`** — every claim the documentation makes,
+  pinned. Separate from `test_loader.py` on purpose: that asks whether the
+  parser is correct, this asks whether it still does what the README and
+  docs say, which is the thing that silently stops being true. The examples
+  and the benchmark are executed here too.
+
+- **`docs/index.md`** and **`CONTRIBUTING.md`**.
+
+### Fixed
+
+- **The documentation described an API that does not exist.** Writing the
+  regression tests surfaced two errors in the draft docs, both of which
+  would have sent a reader straight into a `TypeError`:
+  `document.all_entries` and `statement.entries_with_reason` are methods,
+  not properties, and the latter takes a reason code.
+
+- **The `parse_mt940` docstring overstates what it rejects.** It says a
+  `ValueError` is raised "if a required field is missing". Only `:20:` is
+  actually required. **A statement with no `:25:` parses successfully into
+  an account whose IBAN and BIC are both `None`** — entries that belong to
+  no account, which reconcile against nothing and surface as an unexplained
+  break rather than a parse error.
+
+  The behaviour is left as it is: tightening it would break anyone relying
+  on the leniency, and that deserves to be a decision rather than a quiet
+  edit. It is now documented as a hazard, with the defensive check spelled
+  out, and pinned by a test that forces any future change to be deliberate.
+
+### Changed
+
+- CI lints and formats `benches/` alongside everything else, and runs the
+  benchmark.
+- `tests/test_suite_conformance.py` is excluded from the formatter. It is
+  generated, and the suite uses three different line lengths — letting each
+  repository reformat it would make the shared checksum unsatisfiable.
+
 ## [0.0.16] - 2026-08-21
 
 Suite release with `camt053` 0.0.16. No functional change in this
