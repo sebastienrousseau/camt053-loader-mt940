@@ -33,7 +33,12 @@ import sys
 from pathlib import Path
 
 import pytest
-import tomllib
+
+if sys.version_info >= (3, 11):  # pragma: no cover - version dependent
+    import tomllib
+else:  # pragma: no cover - version dependent
+    # `tomllib` is stdlib only from 3.11, and the suite floor is 3.10.
+    import tomli as tomllib
 
 # Normally the repository this file sits in. The environment override exists
 # for the rollout tool, which checks every repository in the suite from one
@@ -487,7 +492,7 @@ def test_a_release_workflow_publishes_on_a_tag() -> None:
 # ---------------------------------------------------------------------------
 # This file
 # ---------------------------------------------------------------------------
-CANONICAL_SHA256 = "a9ce2fdf3bc91b973cd6eaf697cea1263cb7aa79dbdc354a4be2e5ed4487885b"  # fmt: skip # noqa: E501
+CANONICAL_SHA256 = "9aa7cd3c7e3121beea6cbc5a74e4d28a71d792fc041363f9b66836d24e2b09ba"  # fmt: skip # noqa: E501
 
 
 def test_this_file_is_the_canonical_copy() -> None:
