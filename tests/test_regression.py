@@ -17,6 +17,7 @@ longer runs is worse than no example: it reads as verified and is not.
 
 from __future__ import annotations
 
+import inspect
 import subprocess
 import sys
 from decimal import Decimal
@@ -232,9 +233,18 @@ class TestMandatoryFields:
 
         ``parse_mt940(text, False)`` would be a quiet downgrade to the old
         behaviour at a call site that looks like it is passing an option.
+
+        Asserted from the signature rather than by making the bad call and
+        catching ``TypeError``. That bad call is exactly what CodeQL exists
+        to find, and it flagged the first version of this test as
+        ``py/call/wrong-arguments`` -- correctly. Suppressing a true
+        positive to keep a test is the wrong way round. ``KEYWORD_ONLY``
+        *is* the property being asserted; the ``TypeError`` follows from
+        it by language semantics rather than needing its own case.
         """
-        with pytest.raises(TypeError):
-            parse_mt940(STATEMENT, False)  # type: ignore[misc]
+        parameter = inspect.signature(parse_mt940).parameters["strict"]
+        assert parameter.kind is inspect.Parameter.KEYWORD_ONLY
+        assert parameter.default is True
 
     def test_a_malformed_balance_names_the_tag(self) -> None:
         with pytest.raises(ValueError, match=r":60F:"):
