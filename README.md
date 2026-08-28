@@ -97,7 +97,7 @@ or any other consumer in the suite.
 | Tag | Meaning | Mapped to |
 | :--- | :--- | :--- |
 | `:20:` | Transaction reference number | `ParsedDocument.msg_id` |
-| `:25:` | Account identification (`BIC/account` or `account`) | `Statement.account` (IBAN or proprietary `other_id` + optional `servicer_bic`) |
+| `:25:` | Account identification (`BIC/account` or `account`) — **mandatory** | `Statement.account` (IBAN or proprietary `other_id` + optional `servicer_bic`) |
 | `:28C:` | Statement / sequence number | `Statement.id` + `Statement.electronic_seq_nb` |
 | `:60F:` / `:60M:` | Opening balance (Final / intermediary) | `Balance` with `type_code="OPBD"` |
 | `:61:` | Statement line (booked entry) | `Entry` with `amount`, `credit_debit_indicator`, `value_date`, `booking_date`, `reference`, `account_servicer_ref` |

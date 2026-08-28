@@ -17,6 +17,7 @@ longer runs is worse than no example: it reads as verified and is not.
 
 from __future__ import annotations
 
+import inspect
 import subprocess
 import sys
 from decimal import Decimal
@@ -24,7 +25,11 @@ from pathlib import Path
 
 import pytest
 
-from camt053_loader_mt940 import __version__, parse_mt940
+from camt053_loader_mt940 import (
+    MissingMandatoryFieldError,
+    __version__,
+    parse_mt940,
+)
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -117,35 +122,129 @@ class TestDocumentedShape:
         }
 
 
-class TestDocumentedLeniency:
-    """What the parser accepts, which is the half nobody writes down."""
+class TestMandatoryFields:
+    """What the parser refuses, and the one escape hatch.
+
+    Named for what it is since 0.0.18. It was `TestDocumentedLeniency`, and
+    the rename is the point: the behaviour it pins reversed.
+    """
 
     def test_tag_20_is_required(self) -> None:
         """The one tag whose absence raises, and the error names it."""
         with pytest.raises(ValueError, match=r":20:"):
             parse_mt940(STATEMENT.replace(":20:STMT-REGRESSION-1\n", ""))
 
-    def test_tag_25_is_optional_and_yields_a_none_account(self) -> None:
-        """Pinned deliberately, and documented as a hazard.
+    def test_tag_25_is_rejected_when_absent(self) -> None:
+        """0.0.18 reversed this. It used to parse; now it raises.
 
-        A statement with no `:25:` parses, and its entries belong to an
-        account whose IBAN is None. Downstream that reconciles against it
-        matches nothing, and the failure surfaces as an unexplained
-        reconciliation break rather than as a parse error.
+        The old behaviour produced entries belonging to an account whose
+        IBAN was None. Those reconcile against nothing, and the failure
+        surfaced downstream as an unexplained break rather than a parse
+        error -- or, for anyone following the README, as an AttributeError
+        on NoneType deep inside their own code.
 
-        Tightening this to a hard error is defensible, but it would be a
-        breaking change for anyone relying on the leniency — so it should be
-        a decision with a version bump behind it, not a quiet edit. This test
-        is what forces that.
+        :25: is mandatory in the MT940 specification, and the camt.053
+        model this loader targets makes <Stmt><Acct> mandatory [1..1], so
+        the old output was not a valid ParsedDocument either.
+        """
+        with pytest.raises(MissingMandatoryFieldError) as caught:
+            parse_mt940(
+                STATEMENT.replace(
+                    ":25:COBADEFFXXX/DE89370400440532013000\n", ""
+                )
+            )
+        assert caught.value.tag == "25"
+        assert "absent" in str(caught.value)
+
+    def test_a_present_but_empty_tag_25_is_rejected_too(self) -> None:
+        """Otherwise the check is trivially defeated by a bare ``:25:``.
+
+        Seeing the tag is not the same as being told which account. A bare
+        ``:25:`` reaches exactly the same unreconcilable statement the
+        absent case does, by a route that a presence-only check waves
+        through.
+        """
+        with pytest.raises(MissingMandatoryFieldError) as caught:
+            parse_mt940(
+                STATEMENT.replace(
+                    ":25:COBADEFFXXX/DE89370400440532013000", ":25:"
+                )
+            )
+        assert "carries no account number" in str(caught.value)
+
+    def test_a_servicer_bic_with_no_account_number_is_rejected(self) -> None:
+        """``:25:BIC/`` names the bank but not the account.
+
+        Which reconciles against just as little as naming neither.
+        """
+        with pytest.raises(MissingMandatoryFieldError):
+            parse_mt940(
+                STATEMENT.replace(
+                    ":25:COBADEFFXXX/DE89370400440532013000",
+                    ":25:COBADEFFXXX/",
+                )
+            )
+
+    def test_a_proprietary_account_number_is_accepted(self) -> None:
+        """Not every bank account has an IBAN.
+
+        The rule is that *some* account identifier is present, not that it
+        is an IBAN -- a US or legacy domestic account number lands on
+        ``other_id`` and is perfectly reconcilable.
         """
         document = parse_mt940(
-            STATEMENT.replace(":25:COBADEFFXXX/DE89370400440532013000\n", "")
+            STATEMENT.replace(
+                ":25:COBADEFFXXX/DE89370400440532013000", ":25:1234567890"
+            )
         )
-        account = document.statements[0].account
-        assert account.iban is None
-        assert account.servicer_bic is None
-        # And the entries still parse, which is the part that surprises.
+        assert document.statements[0].account.other_id == "1234567890"
+
+    def test_strict_false_restores_the_old_behaviour(self) -> None:
+        """The escape hatch, for an account known from outside the file.
+
+        A filename, or the SFTP folder the file landed in. The caller
+        takes on the obligation to attach the account before anything
+        downstream tries to reconcile it.
+        """
+        document = parse_mt940(
+            STATEMENT.replace(":25:COBADEFFXXX/DE89370400440532013000\n", ""),
+            strict=False,
+        )
+        assert document.statements[0].account.iban is None
         assert len(document.statements[0].entries) == 1
+
+    def test_the_error_is_a_valueerror(self) -> None:
+        """Callers already catching ValueError keep working.
+
+        Every error this module raised before 0.0.18 was a bare
+        ValueError. Narrowing the type would have been a second breaking
+        change on top of the one that was actually wanted.
+        """
+        assert issubclass(MissingMandatoryFieldError, ValueError)
+        with pytest.raises(ValueError):
+            parse_mt940(
+                STATEMENT.replace(
+                    ":25:COBADEFFXXX/DE89370400440532013000\n", ""
+                )
+            )
+
+    def test_strict_is_keyword_only(self) -> None:
+        """So a stray positional argument cannot silently disable it.
+
+        ``parse_mt940(text, False)`` would be a quiet downgrade to the old
+        behaviour at a call site that looks like it is passing an option.
+
+        Asserted from the signature rather than by making the bad call and
+        catching ``TypeError``. That bad call is exactly what CodeQL exists
+        to find, and it flagged the first version of this test as
+        ``py/call/wrong-arguments`` -- correctly. Suppressing a true
+        positive to keep a test is the wrong way round. ``KEYWORD_ONLY``
+        *is* the property being asserted; the ``TypeError`` follows from
+        it by language semantics rather than needing its own case.
+        """
+        parameter = inspect.signature(parse_mt940).parameters["strict"]
+        assert parameter.kind is inspect.Parameter.KEYWORD_ONLY
+        assert parameter.default is True
 
     def test_a_malformed_balance_names_the_tag(self) -> None:
         with pytest.raises(ValueError, match=r":60F:"):

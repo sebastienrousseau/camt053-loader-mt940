@@ -273,7 +273,13 @@ def test_entry_without_customer_ref_leaves_servicer_ref_none() -> None:
 
 
 def test_account_with_trailing_slash_only_bic_returns_empty_other_id() -> None:
-    """A :25: like ``BIC/`` yields a BIC and a None account id."""
+    """A :25: like ``BIC/`` yields a BIC and a None account id.
+
+    Needs ``strict=False`` from 0.0.18. The parse itself is unchanged --
+    this still exercises how ``BIC/`` splits -- but a statement naming the
+    servicer and no account is rejected by default, because it reconciles
+    against just as little as one naming neither.
+    """
     mt940 = (
         ":20:REF\n"
         ":25:COBADEFFXXX/\n"
@@ -281,8 +287,10 @@ def test_account_with_trailing_slash_only_bic_returns_empty_other_id() -> None:
         ":60F:C260620EUR1000,00\n"
         ":62F:C260620EUR1000,00\n"
     )
-    doc = parse_mt940(mt940)
+    doc = parse_mt940(mt940, strict=False)
     assert doc.statements[0].account.servicer_bic == "COBADEFFXXX"
+    assert doc.statements[0].account.iban is None
+    assert doc.statements[0].account.other_id is None
     assert doc.statements[0].account.iban is None
     assert doc.statements[0].account.other_id is None
 
