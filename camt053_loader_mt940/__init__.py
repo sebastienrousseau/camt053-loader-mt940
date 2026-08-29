@@ -21,6 +21,6 @@ from camt053_loader_mt940.loader import (
     parse_mt940,
 )
 
-__version__ = "0.0.18"
+__version__ = "0.0.20"
 
 __all__ = ["MissingMandatoryFieldError", "parse_mt940", "__version__"]
