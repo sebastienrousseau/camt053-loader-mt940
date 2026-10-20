@@ -67,8 +67,8 @@ pip install camt053-loader-mt940
 ```
 
 > **Latest release: v0.0.23**: one `Statement` per `:20:` in a
-> multi-statement file, released in lockstep with the camt053 suite, for
-> Python 3.10+.
+> multi-statement file, malformed amounts and impossible dates rejected,
+> released in lockstep with the camt053 suite, for Python 3.10+.
 
 The package pulls in [`camt053`][core] (0.0.20 or newer, below 1) and nothing
 else. There is no command-line entry point: it is a library.
@@ -136,6 +136,7 @@ one version, core first, and share the `camt053.models` data model.
 | Files | Several statements in one payload, one `Statement` per `:20:` | Supported since 0.0.23 |
 | Reversals | `RC`/`RD` lines become entries with `reversal_indicator=True` | Supported |
 | Validation | Missing or empty `:20:`, missing `:25:` or one that names no account | Rejected (`strict=True` default) |
+| Validation | Amounts that are not numbers, dates that do not exist | Rejected since 0.0.23 |
 | Validation | Missing `:28C:`, `:60F:` or `:62F:` | Accepted today; a recorded gap |
 | Narrative | Bank-specific `:86:` sub-fields (`?20`, `?30`, ...) | Kept verbatim, not interpreted |
 | Return reasons | ISO `ExternalReturnReasonCode` for `RC`/`RD` lines | Not mapped |
@@ -294,8 +295,8 @@ The project is pre-1.0 and versions advance in `0.0.1` steps, in lockstep
 with the camt053 suite. The breaking axis is `parse_mt940`'s signature and
 the `ParsedDocument` it produces for a given input: a change to that output
 is breaking even when no signature moves, and the changelog calls it out
-(0.0.18 rejecting a missing `:25:`, 0.0.23 splitting multi-statement
-files). The Python floor moves only as described in the
+(0.0.18 rejecting a missing `:25:`; 0.0.23 splitting multi-statement files
+and rejecting malformed amounts and dates). The Python floor moves only as described in the
 [toolchain policy](docs/POLICIES.md).
 
 ---

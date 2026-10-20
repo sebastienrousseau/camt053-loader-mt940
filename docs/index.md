@@ -181,7 +181,9 @@ rotting.
 
 ## Errors
 
-`ValueError` carries the field that failed:
+`ValueError` carries the field that failed. Since 0.0.23 that includes an
+amount that is not a number (`1,2,3`, a bare `,`) and a date that does not
+exist (`000000`, 30 February):
 
 ```python
 try:

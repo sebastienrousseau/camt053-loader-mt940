@@ -15,9 +15,10 @@ together at one version, core first.
 ## [0.0.23] - 2026-10-20
 
 The camt053 suite's 0.0.23 release, which brings every member back to one
-version after `camt053-mcp` published 0.0.22 alone. One parser fix that
-changes output for multi-statement files, and the repository brought up to
-the family's supply-chain, licensing and documentation standard.
+version after `camt053-mcp` published 0.0.22 alone. Three parser fixes that
+change what some inputs produce, fuzzing that found two of them, and the
+repository brought up to the family's supply-chain, licensing and
+documentation standard.
 
 ### Fixed
 
@@ -31,6 +32,15 @@ the family's supply-chain, licensing and documentation standard.
   behaviour change; a single-statement payload parses exactly as before.
   `msg_id` is now the first `:20:`, and `strict` and the `:20:` check apply
   to every statement.
+- **Amounts that are not numbers are rejected.** The pattern `[\d,]+`
+  accepted `1,2,3` as the amount `"1.2.3"` and a bare `,` as `"."`, whose
+  `amount_decimal` is `None`. An amount is now at least one integer digit and
+  at most one decimal comma; anything else raises `ValueError` naming the
+  tag. `1000,00`, `1000,` and `7` parse as before.
+- **Dates that do not exist are rejected.** Any six digits were a date:
+  `000000` became `2000-00-00` and `260230` became 30 February, in balances
+  and in `:61:` value and booking dates. They now raise `ValueError` naming
+  the tag.
 - `scripts/check_suite_consistency.py` compared this tree with the
   `camt053` core's PyPI release instead of this package's, so a 0.0.23
   tree that was never tagged here would have passed once the core shipped.
@@ -57,6 +67,11 @@ the family's supply-chain, licensing and documentation standard.
 
 ### Added
 
+- Fuzzing: an Atheris harness (`fuzz/fuzz_parse_mt940.py`, two minutes per
+  change and thirty weekly in CI) and Hypothesis property tests
+  (`tests/test_fuzz.py`) holding `parse_mt940` to one contract on any
+  input, with a seed and fixed-bug corpus in `fuzz/corpus/` replayed on
+  every test run. They found the amount and date defects above.
 - CI installs from hash-pinned `requirements/*.txt`, pins every action by
   SHA, and audits every requirements file with `pip-audit`.
 - OpenSSF Scorecard, DCO, "Version sources agree" and Complexity workflows
