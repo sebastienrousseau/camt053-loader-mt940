@@ -15,70 +15,92 @@ jobs:
       name: pypi
       url: https://pypi.org/p/camt053-loader-mt940
     permissions:
-      contents: write
+      contents: write       # create the GitHub release and upload assets
       id-token: write       # OIDC for PyPI trusted publishing + sigstore
       attestations: write   # SLSA build provenance attestations
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
-          cache: "pip"
 
-      - name: Verify tag matches package version
+      # Every restatement of the version (pyproject, __version__,
+      # CHANGELOG, CITATION.cff) must equal the tag. Standard library
+      # only, so it runs before anything is installed.
+      - name: Verify tag matches every version source
         run: |
-          # Parse the version literal directly rather than importing
-          # the package (which would transitively require openpyxl +
-          # camt053 to be installed first).
+          set -euo pipefail
           TAG="${GITHUB_REF_NAME#v}"
-          PKG_INIT=$(grep -E '^__version__' camt053_loader_mt940/__init__.py | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
           PKG_TOML=$(grep -E '^version' pyproject.toml | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
-          echo "Tag: $TAG | __init__.py: $PKG_INIT | pyproject.toml: $PKG_TOML"
-          if [ "$TAG" != "$PKG_INIT" ] || [ "$PKG_INIT" != "$PKG_TOML" ]; then
+          echo "Tag: $TAG | pyproject.toml: $PKG_TOML"
+          if [ "$TAG" != "$PKG_TOML" ]; then
             echo "Version mismatch; aborting." >&2
             exit 1
           fi
+          python3 scripts/verify_versions.py
 
-      - name: Install build tooling
-        run: |
-          python -m pip install --upgrade pip
-          pip install build twine
+      # build, hatchling and twine come from the hash-pinned build.txt;
+      # --no-isolation keeps the backend that pinned one rather than a
+      # fresh, unpinned download.
+      - name: Install build tooling (hash-pinned)
+        run: pip install --require-hashes -r requirements/build.txt
 
       - name: Build sdist + wheel
-        run: python -m build
+        run: python -m build --no-isolation
 
       - name: Twine check
-        run: twine check dist/*
+        run: twine check --strict dist/*
 
       # SLSA build provenance attestation for every distribution, verifiable
       # with `gh attestation verify` (complements the cosign signatures below).
       - name: Generate SLSA build provenance attestation
-        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-path: "dist/*"
 
-      - name: Extract release notes
-        id: notes
+      # CycloneDX SBOM of what a user's install resolves: the hash-pinned
+      # runtime tree plus the wheel just built, installed with --no-deps.
+      - name: Generate CycloneDX SBOM
         run: |
+          set -euo pipefail
+          python -m venv "$RUNNER_TEMP/target"
+          "$RUNNER_TEMP/target/bin/pip" install --require-hashes -r requirements/runtime.txt
+          "$RUNNER_TEMP/target/bin/pip" install --no-deps dist/*.whl
+          pip install --require-hashes -r requirements/sbom.txt
+          mkdir -p sbom
+          cyclonedx-py environment --of JSON \
+            -o "sbom/camt053_loader_mt940-${GITHUB_REF_NAME#v}.cdx.json" \
+            "$RUNNER_TEMP/target/bin/python"
+
+      # The title is the project name and the bare version, never the tag
+      # (camt053-loader-mt940 0.0.23, not v0.0.23). The body starts as the
+      # committed release notes; the release handover script then rewrites
+      # it with the asset checksums once every asset is attached.
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
           VERSION="${GITHUB_REF_NAME#v}"
           NOTE_PATH="releases/v${VERSION}.md"
           if [ ! -f "$NOTE_PATH" ]; then
             echo "Release notes missing at $NOTE_PATH" >&2
             exit 1
           fi
-          echo "path=$NOTE_PATH" >> "$GITHUB_OUTPUT"
-
-      - name: Create GitHub release
-        uses: softprops/action-gh-release@v2
-        with:
-          body_path: ${{ steps.notes.outputs.path }}
-          files: dist/*
+          gh release create "$GITHUB_REF_NAME" dist/* sbom/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "camt053-loader-mt940 ${VERSION}" \
+            --notes-file "$NOTE_PATH" \
+            --verify-tag
 
       - name: Publish to PyPI via OIDC trusted publishing
-        uses: pypa/gh-action-pypi-publish@release/v1
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
         with:
+          attestations: true
           skip-existing: true
 
       # Keyless sigstore signatures (Fulcio + Rekor via the workflow's OIDC
@@ -93,10 +115,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          for f in dist/*; do
+          set -euo pipefail
+          for f in dist/*.whl dist/*.tar.gz; do
             cosign sign-blob --yes \
               --output-signature "${f}.sig" \
               --output-certificate "${f}.pem" \
               "$f"
           done
-          gh release upload "${GITHUB_REF_NAME}" dist/*.sig dist/*.pem --clobber
+          gh release upload "${GITHUB_REF_NAME}" dist/*.sig dist/*.pem \
+            --repo "$GITHUB_REPOSITORY" --clobber
