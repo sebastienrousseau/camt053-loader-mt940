@@ -2,8 +2,9 @@
 # SPDX-License-Identifier: Apache-2.0 OR MIT
 
 # Every restatement of the release version agrees: pyproject, __version__,
-# CHANGELOG, CITATION.cff, the release notes release.yml publishes, and the
-# README's latest-release callout. Standard library only; no install.
+# CHANGELOG, CITATION.cff, the release notes release.yml publishes, the
+# README's latest-release callout and SECURITY.md's supported-versions
+# table. Standard library only; no install.
 name: Version sources agree
 
 on:

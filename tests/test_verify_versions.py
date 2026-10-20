@@ -21,6 +21,7 @@ SOURCES = (
     "CHANGELOG.md",
     "CITATION.cff",
     "README.md",
+    "SECURITY.md",
     "camt053_loader_mt940/__init__.py",
 )
 
@@ -120,3 +121,11 @@ def test_a_stale_readme_callout_fails(tree: Path) -> None:
 def test_a_missing_citation_is_reported(tree: Path) -> None:
     (tree / "CITATION.cff").unlink()
     assert _script().problems(tree) == ["CITATION.cff: missing"]
+
+
+def test_a_stale_security_table_fails(tree: Path) -> None:
+    v = _version(tree)
+    _rewrite(tree / "SECURITY.md", f"`{v}` (latest)", "`0.0.1` (latest)")
+    assert _script().problems(tree) == [
+        "SECURITY.md: latest supported version is 0.0.1"
+    ]

@@ -10,10 +10,12 @@ must appear as:
 * a ``## [X.Y.Z]`` heading in ``CHANGELOG.md``;
 * ``version:`` in ``CITATION.cff``;
 * the heading of ``releases/vX.Y.Z.md``, which release.yml publishes;
-* the "Latest release: vX.Y.Z" callout in ``README.md``, when present.
+* the "Latest release: vX.Y.Z" callout in ``README.md``, when present;
+* the "(latest)" row of the supported-versions table in ``SECURITY.md``.
 
 This package has published a release whose ``__version__`` disagreed with
-its metadata (0.0.16), and a README announcing a release six versions old.
+its metadata (0.0.16), and a README and a security policy announcing a
+release six versions old.
 Standard library only, so the workflow needs no install.
 
 Usage: python3 scripts/verify_versions.py
@@ -94,10 +96,26 @@ def _readme(root: Path, expected: str) -> list[str]:
     return [f"README.md: latest release is v{found}"]
 
 
+def _security(root: Path, expected: str) -> list[str]:
+    found = _search(
+        r"^\| `(\d+\.\d+\.\d+)` \(latest\)", _read(root, "SECURITY.md") or ""
+    )
+    if found == expected:
+        return []
+    return [f"SECURITY.md: latest supported version is {found}"]
+
+
 def problems(root: Path = ROOT) -> list[str]:
     """Every restatement of the version that disagrees with pyproject."""
     expected = pyproject_version(root)
-    checks = (_dunder, _changelog, _citation, _release_notes, _readme)
+    checks = (
+        _dunder,
+        _changelog,
+        _citation,
+        _release_notes,
+        _readme,
+        _security,
+    )
     return [problem for check in checks for problem in check(root, expected)]
 
 
