@@ -49,6 +49,9 @@ dev = [
     # needed there, or the conformance gate simply does not run on 3.10.
     'tomli >= 2 ; python_version < "3.11"',
     "packaging >= 23",
+    # scripts/check_complexity.py and its tests.
+    "radon >= 6.0.1",
+    "complexipy >= 8.1",
 ]
 
 [project.urls]
