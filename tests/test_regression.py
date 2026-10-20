@@ -264,6 +264,68 @@ class TestMandatoryFields:
         )
 
 
+SECOND = """:20:STMT-REGRESSION-2
+:25:NWBKGB2LXXX/GB29NWBK60161331926819
+:28C:43/1
+:60F:C260621EUR200,00
+:86:Narrative before any :61: of this statement
+:61:2606220622DR50,00NTRFREF2//SREF2
+:62F:C260622EUR150,00
+"""
+
+
+class TestOneStatementPerTag20:
+    """Documented: ``document.statements`` holds "one per :20: block".
+
+    A file carrying several statements (one per account, or one per day)
+    used to come back as a single statement: every entry and balance under
+    the last ``:25:`` account, ``msg_id`` from the last ``:20:``.
+    """
+
+    def test_each_tag_20_starts_its_own_statement(self) -> None:
+        document = parse_mt940(STATEMENT + SECOND)
+        assert [s.id for s in document.statements] == ["42/1", "43/1"]
+
+    def test_entries_stay_with_their_own_account(self) -> None:
+        first, second = parse_mt940(STATEMENT + SECOND).statements
+        assert first.account.iban == "DE89370400440532013000"
+        assert [e.reference for e in first.entries] == ["REF1"]
+        assert second.account.iban == "GB29NWBK60161331926819"
+        assert [e.reference for e in second.entries] == ["REF2"]
+
+    def test_balances_stay_with_their_own_statement(self) -> None:
+        first, second = parse_mt940(STATEMENT + SECOND).statements
+        assert [b.amount for b in first.balances] == ["1000.00", "1500.00"]
+        assert [b.amount for b in second.balances] == ["200.00", "150.00"]
+
+    def test_narrative_never_crosses_into_the_previous_statement(
+        self,
+    ) -> None:
+        """An :86: before a statement's first :61: belongs to no entry."""
+        first, second = parse_mt940(STATEMENT + SECOND).statements
+        assert [d.additional_info for d in first.entries[0].details] == [
+            "Payment for invoice 123"
+        ]
+        assert second.entries[0].details == []
+
+    def test_msg_id_is_the_first_reference(self) -> None:
+        assert parse_mt940(STATEMENT + SECOND).msg_id == "STMT-REGRESSION-1"
+
+    def test_strict_checks_every_statement(self) -> None:
+        no_account = SECOND.replace(
+            ":25:NWBKGB2LXXX/GB29NWBK60161331926819\n", ""
+        )
+        with pytest.raises(MissingMandatoryFieldError):
+            parse_mt940(STATEMENT + no_account)
+
+    def test_an_empty_reference_in_a_later_statement_is_rejected(
+        self,
+    ) -> None:
+        empty = SECOND.replace(":20:STMT-REGRESSION-2", ":20:")
+        with pytest.raises(ValueError, match=":20:"):
+            parse_mt940(STATEMENT + empty)
+
+
 class TestShippedArtefactsStillRun:
     """A worked example that no longer runs reads as verified and is not."""
 

@@ -290,15 +290,17 @@ def parse_mt940(text: str, *, strict: bool = True) -> ParsedDocument:
     Returns:
         A :class:`~camt053.models.ParsedDocument` whose
         ``message_type`` is ``"camt.053.001.08"`` (the closest direct
-        camt.053 equivalent of an MT940 final-statement message).
+        camt.053 equivalent of an MT940 final-statement message), with one
+        :class:`~camt053.models.Statement` per ``:20:`` in the payload, in
+        file order. ``msg_id`` is the first statement's ``:20:``.
 
     Raises:
-        MissingMandatoryFieldError: If ``:25:`` is absent or identifies
-            no account, and ``strict`` is ``True``. A subclass of
-            :class:`ValueError`.
-        ValueError: If ``:20:`` is absent, or a balance or statement line
-            does not match the expected format. The message identifies
-            the offending tag.
+        MissingMandatoryFieldError: If any statement's ``:25:`` is absent
+            or identifies no account, and ``strict`` is ``True``. A
+            subclass of :class:`ValueError`.
+        ValueError: If ``:20:`` is absent or empty, or a balance or
+            statement line does not match the expected format. The message
+            identifies the offending tag.
 
     Note:
         ``strict`` currently governs ``:25:`` only. ``:28C:``, ``:60F:``
@@ -307,15 +309,54 @@ def parse_mt940(text: str, *, strict: bool = True) -> ParsedDocument:
         than a decision, and widening the check is a one-line change to
         :data:`_MANDATORY_UNDER_STRICT`.
     """
-    statement = Statement()
-    msg_id: str | None = None
-    last_entry: Entry | None = None
-    seen: set[str] = set()
+    statements: list[Statement] = []
+    references: list[str] = []
+    for fields in _statement_blocks(_iter_fields(text)):
+        reference, statement = _parse_statement(fields)
+        if reference is None:
+            raise ValueError("MT940 payload missing required :20: reference")
+        if strict:
+            _require_account(statement, {tag for tag, _ in fields})
+        references.append(reference)
+        statements.append(statement)
 
-    for tag, value in _iter_fields(text):
-        seen.add(tag)
+    return ParsedDocument(
+        message_type="camt.053.001.08",
+        msg_id=references[0],
+        statements=statements,
+    )
+
+
+def _statement_blocks(
+    fields: Iterator[tuple[str, str]],
+) -> list[list[tuple[str, str]]]:
+    """Group fields into one block per statement, each opened by ``:20:``.
+
+    A file may carry several statements back to back, one per account or
+    per day. Each ``:20:`` after the first starts a new block; fields before
+    the first ``:20:`` stay with it. There is always at least one block, so
+    an empty payload still reports its missing ``:20:``.
+    """
+    blocks: list[list[tuple[str, str]]] = [[]]
+    has_reference = False
+    for tag, value in fields:
+        if tag == "20" and has_reference:
+            blocks.append([])
+        has_reference = has_reference or tag == "20"
+        blocks[-1].append((tag, value))
+    return blocks
+
+
+def _parse_statement(
+    fields: list[tuple[str, str]],
+) -> tuple[str | None, Statement]:
+    """Build one statement from its block; return its ``:20:`` and itself."""
+    statement = Statement()
+    reference: str | None = None
+    last_entry: Entry | None = None
+    for tag, value in fields:
         if tag == "20":
-            msg_id = value or None
+            reference = value or None
         elif tag == "61":
             last_entry = _parse_entry(value)
             statement.entries.append(last_entry)
@@ -323,18 +364,7 @@ def parse_mt940(text: str, *, strict: bool = True) -> ParsedDocument:
             _attach_additional_info(last_entry, value)
         else:
             _apply_statement_field(statement, tag, value)
-
-    if msg_id is None:
-        raise ValueError("MT940 payload missing required :20: reference")
-
-    if strict:
-        _require_account(statement, seen)
-
-    return ParsedDocument(
-        message_type="camt.053.001.08",
-        msg_id=msg_id,
-        statements=[statement],
-    )
+    return reference, statement
 
 
 def _apply_statement_field(statement: Statement, tag: str, value: str) -> None:
