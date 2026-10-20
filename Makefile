@@ -5,7 +5,7 @@
 # Install them first into a virtual environment:
 #   pip install --require-hashes -r requirements/test.txt
 #   pip install --no-deps -e .
-.PHONY: help test lint format type-check complexity audit verify-versions pip-compile benchmark examples check clean
+.PHONY: help test lint format type-check complexity audit verify-versions pip-compile benchmark examples demo check clean
 
 PYTHON ?= python3
 SOURCES = camt053_loader_mt940/ tests/ examples/ benches/ scripts/
@@ -56,6 +56,9 @@ benchmark: ## Run the benchmark in quick mode
 
 examples: ## Run every example end to end
 	@for example in examples/*.py; do echo "--- $$example"; $(PYTHON) "$$example" || exit 1; done
+
+demo: ## Re-render .github/demo.gif from .github/demo.tape (needs vhs)
+	vhs .github/demo.tape
 
 check: lint type-check complexity verify-versions test benchmark examples ## Everything CI runs on a pull request
 

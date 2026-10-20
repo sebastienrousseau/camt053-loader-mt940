@@ -142,7 +142,7 @@ recorded gap rather than a decision.
 
 | MT940 tag | Meaning | Where it lands |
 |---|---|---|
-| `:20:` | Transaction reference | `document.msg_id` |
+| `:20:` | Transaction reference | starts a statement; the first is `document.msg_id` |
 | `:25:` | Account identification | `statement.account.iban`, `.servicer_bic` |
 | `:28C:` | Statement / sequence number | `statement.id`, `.electronic_seq_nb` |
 | `:60F:` | Opening balance | `statement.balances[0]` |

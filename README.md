@@ -1,71 +1,88 @@
 <!-- SPDX-FileCopyrightText: 2026 Sebastien Rousseau <sebastian.rousseau@gmail.com> -->
 <!-- SPDX-License-Identifier: Apache-2.0 OR MIT -->
 
-# camt053-loader-mt940: MT940 → camt.053 loader
-
 <p align="center">
   <img src="https://cloudcdn.pro/camt053/v1/logos/camt053.svg" alt="camt053-loader-mt940 logo" width="128" />
 </p>
 
-[![PyPI Version][pypi-badge]][07]
-[![Python Versions][python-versions-badge]][07]
-[![License][license-badge]][01]
-[![Tests][tests-badge]][tests-url]
-[![Quality][quality-badge]][quality-url]
+<h1 align="center">camt053-loader-mt940</h1>
 
-**Convert legacy SWIFT MT940 bank statements into the same
-[`camt053`][core] data model as native camt.053 input.** A single
-`parse_mt940(text)` call returns a `camt053.models.ParsedDocument`,
-ready for every downstream consumer in the suite (writer, validator,
-reversal builder, MCP and LSP servers).
+<p align="center">
+  Turns SWIFT MT940 bank statements into the same camt053 ParsedDocument that native camt.053 XML produces.
+</p>
 
-> **Latest release: v0.0.20.** SWIFT MT940 is scheduled for retirement
-> in **November 2028**. This loader bridges the 2-year window where
-> banks still produce MT940 but downstream tooling expects camt.053.
+<p align="center">
+  <a href="https://github.com/sebastienrousseau/camt053-loader-mt940/actions"><img src="https://img.shields.io/github/actions/workflow/status/sebastienrousseau/camt053-loader-mt940/ci.yml?style=for-the-badge&logo=github" alt="Build" height="28" /></a>
+  <a href="https://pypi.org/project/camt053-loader-mt940/"><img src="https://img.shields.io/pypi/v/camt053-loader-mt940?style=for-the-badge&color=fc8d62&logo=python" alt="Registry" height="28" /></a>
+  <a href="docs/index.md"><img src="https://img.shields.io/badge/docs-source-blue?style=for-the-badge&labelColor=555555&logo=readthedocs" alt="Docs" height="28" /></a>
+  <a href="https://scorecard.dev/viewer/?uri=github.com/sebastienrousseau/camt053-loader-mt940"><img src="https://img.shields.io/ossf-scorecard/github.com/sebastienrousseau/camt053-loader-mt940?style=for-the-badge&label=OpenSSF%20Scorecard&logo=openssf" alt="OpenSSF Scorecard" height="28" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0%20OR%20MIT-blue.svg?style=for-the-badge" alt="License: Apache-2.0 OR MIT" height="28" /></a>
+  <a href="https://github.com/sebastienrousseau/camt053-loader-mt940/blob/main/docs/POLICIES.md"><img src="https://img.shields.io/badge/Python-3.10%2B-93450a.svg?style=for-the-badge&logo=python" alt="Python 3.10 or newer" height="28" /></a>
+</p>
+
+<p align="center">
+  <img src=".github/demo.gif" alt="camt053-loader-mt940 demo: the MT940 text in examples/01_minimal_parse.py, the parsed statement it prints, then a statement without :25: rejected with MissingMandatoryFieldError" width="100%" />
+</p>
+
+---
 
 ## Contents
 
-- [Overview](#overview)
-- [Install](#install)
-- [Quick Start](#quick-start)
-- [Supported Fields](#supported-fields)
-- [Examples](#examples)
-- [The camt053 suite](#the-camt053-suite)
-- [When not to use camt053-loader-mt940](#when-not-to-use-camt053-loader-mt940)
-- [Development](#development)
-- [Security](#security)
-- [Documentation](#documentation)
+**Getting started**
+
+- [Install](#install) — `pip`, one runtime dependency
+- [Requirements](#requirements) — toolchain floor, platforms
+- [Quick Start](#quick-start) — one call from MT940 text to a camt053 `ParsedDocument`
+
+**The camt053-loader-mt940 ecosystem**
+
+- [The camt053-loader-mt940 ecosystem](#the-camt053-loader-mt940-ecosystem) — the six packages of the camt053 suite
+
+**Library reference**
+
+- [Capabilities at a glance](#capabilities-at-a-glance) — the current surface by theme
+- [Ecosystem comparison](#ecosystem-comparison) — short matrix; full table at [`docs/COMPARISON.md`](docs/COMPARISON.md)
+- [Benchmarks](#benchmarks) — headline numbers; full table at [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md)
+- [Features](#features) — module-level capability list
+- [Configuration](#configuration) — core options
+- [Examples](#examples) — runnable example index
+
+**Operational**
+
+- [When not to use camt053-loader-mt940](#when-not-to-use-camt053-loader-mt940) — limitations
+- [Development](#development) — make targets, CI
+- [Security](#security) — guarantees and compliance
+- [Documentation](#documentation) — all reference docs
+- [Stability guarantees](#stability-guarantees) — SemVer axis, output stability, minimum toolchain discipline
 - [License](#license)
-- [Contributing](#contributing)
-- [Acknowledgements](#acknowledgements)
 
-## Overview
-
-`camt053-loader-mt940` is a small, focused companion to the
-[`camt053`][core] ISO 20022 cash-management library. It does one thing
-well: parse the common-denominator MT940 grammar shipped by EU and UK
-commercial banks, and hand back the same `ParsedDocument` shape that
-the camt.053 XML parser produces. The rest of the suite then works
-unchanged.
-
-This package is part of the **camt053 suite**, a set of independently
-installable packages that share the `camt053.services` layer:
-
-- [`camt053`][core] - the core library (CLI + REST API)
-- [`camt053-mcp`][mcp] - the **Model Context Protocol** server for AI agents
-- [`camt053-lsp`][lsp] - the **Language Server Protocol** server for editors
-- [`camt053-writer-xlsx`][writer] - Excel `.xlsx` writer for parsed statements
-- `camt053-loader-mt940` - this package, the MT940 loader
+---
 
 ## Install
 
-`camt053-loader-mt940` runs on macOS, Linux, and Windows and requires
-**Python 3.10+** and **pip**. It pulls in `camt053` automatically and
-has no other runtime dependencies.
+### As a Python library
 
-```bash
+```sh
 pip install camt053-loader-mt940
 ```
+
+> **Latest release: v0.0.20**: rejects a statement whose `:25:` names no
+> account (since 0.0.18), in lockstep with the camt053 suite, for
+> Python 3.10+.
+
+The package pulls in [`camt053`][core] (0.0.20 or newer, below 1) and nothing
+else. There is no command-line entry point: it is a library.
+
+---
+
+## Requirements
+
+- Python 3.10 or newer, tested in CI on 3.10, 3.11, 3.12, 3.13 and 3.14 on
+  Linux ([toolchain policy](docs/POLICIES.md)).
+- `camt053` 0.0.20 or newer on the 0.x line.
+- Pure Python, so any platform CPython runs on; CI exercises Linux only.
+
+---
 
 ## Quick Start
 
@@ -83,156 +100,215 @@ mt940 = """:20:STMT-REF-1
 
 document = parse_mt940(mt940)
 
-print(document.msg_id)
-# STMT-REF-1
-print(document.statements[0].account.iban)
-# DE89370400440532013000
-print(document.statements[0].balances[0].amount)
-# 1000.00
+print(document.msg_id)                          # STMT-REF-1
+print(document.statements[0].account.iban)     # DE89370400440532013000
+print(document.statements[0].balances[0].amount)  # 1000.00
 ```
 
-That's a `camt053.models.ParsedDocument`, ready to feed to
-[`camt053-writer-xlsx`][writer] (Excel output), the camt053 REST API,
-or any other consumer in the suite.
+`document` is a `camt053.models.ParsedDocument`, the type the camt053 XML
+parser returns, so the camt053 validator, the reversal builder,
+[`camt053-writer-xlsx`][writer], [`camt053-mcp`][mcp] and
+[`camt053-lsp`][lsp] take it unchanged.
 
-## Supported Fields
+---
 
-| Tag | Meaning | Mapped to |
+## The camt053-loader-mt940 ecosystem
+
+This package is one of six in the camt053 suite. They release together at
+one version, core first, and share the `camt053.models` data model.
+
+| Component | Purpose | Use case |
 | :--- | :--- | :--- |
-| `:20:` | Transaction reference number | `ParsedDocument.msg_id` |
-| `:25:` | Account identification (`BIC/account` or `account`) — **mandatory** | `Statement.account` (IBAN or proprietary `other_id` + optional `servicer_bic`) |
-| `:28C:` | Statement / sequence number | `Statement.id` + `Statement.electronic_seq_nb` |
-| `:60F:` / `:60M:` | Opening balance (Final / intermediary) | `Balance` with `type_code="OPBD"` |
-| `:61:` | Statement line (booked entry) | `Entry` with `amount`, `credit_debit_indicator`, `value_date`, `booking_date`, `reference`, `account_servicer_ref` |
-| `:86:` | Information to account owner | `TransactionDetails.additional_info` attached to the preceding entry |
-| `:62F:` / `:62M:` | Closing balance | `Balance` with `type_code="CLBD"` |
-| `:64:` | Closing available balance | `Balance` with `type_code="CLAV"` |
-| `:65:` | Forward available balance | `Balance` with `type_code="FWAV"` |
+| [`camt053`][core] | Reads ISO 20022 camt.053, camt.052 and camt.054 statements and generates validated reversing entries | The core library this loader feeds |
+| **`camt053-loader-mt940`** | SWIFT MT940 customer statements to a camt.053 `ParsedDocument` | A bank, ERP or middleware still emits MT940 |
+| [`camt053-loader-mt942`][mt942] | SWIFT MT942 interim transaction reports to a camt.052 `ParsedDocument` | Intraday reports in MT942 |
+| [`camt053-writer-xlsx`][writer] | Writes parsed statements to Excel `.xlsx` | Hand a statement to finance as a spreadsheet |
+| [`camt053-mcp`][mcp] | MCP server exposing the library to AI agents, including MT940 migration | Agent workflows over statements |
+| [`camt053-lsp`][lsp] | Language server for authoring camt053 reversing-entry data files | Editor support |
 
-### Reversal detection
+---
 
-A `:61:` line whose debit/credit indicator is **`RD`** (reversal of
-debit) or **`RC`** (reversal of credit) becomes an `Entry` with
-`reversal_indicator=True`. Direct support for SEPA / NACHA / CBPR+
-return-reason mapping is on the v0.0.2 roadmap.
+## Capabilities at a glance
 
-### Unknown fields
+| Area | Capability | Status |
+| :--- | :--- | :--- |
+| Parsing | `:20:`, `:25:`, `:28C:`, `:60F:`/`:60M:`, `:61:`, `:86:`, `:62F:`/`:62M:`, `:64:`, `:65:` | Supported |
+| Files | Several statements in one payload, one `Statement` per `:20:` | Supported since 0.0.23 |
+| Reversals | `RC`/`RD` lines become entries with `reversal_indicator=True` | Supported |
+| Validation | Missing or empty `:20:`, missing `:25:` or one that names no account | Rejected (`strict=True` default) |
+| Validation | Missing `:28C:`, `:60F:` or `:62F:` | Accepted today; a recorded gap |
+| Narrative | Bank-specific `:86:` sub-fields (`?20`, `?30`, ...) | Kept verbatim, not interpreted |
+| Return reasons | ISO `ExternalReturnReasonCode` for `RC`/`RD` lines | Not mapped |
 
-Unrecognised tags (e.g. `:13D:` creation timestamp, bank-specific
-extensions) are **silently ignored**, so future SWIFT additions do
-not break parsing. This follows Postel's law: be liberal in what you
-accept.
+---
+
+## Ecosystem comparison
+
+The established Python MT940 parser is [`mt-940`][mt-940]. It returns its own
+`Transactions` collection; this package returns the camt053 model, so the
+result goes straight into camt.053 tooling.
+
+| Project | Output | Multi-statement files | Licence |
+| :--- | :---: | :---: | :---: |
+| **camt053-loader-mt940** | camt053 `ParsedDocument` | One `Statement` per `:20:` | Apache-2.0 OR MIT |
+| `mt-940` 5.1.1 | `mt940.models.Transactions` | `parse_statements()`, one `Transactions` per `:20:` | BSD-3-Clause |
+
+See [`docs/COMPARISON.md`](docs/COMPARISON.md) for the evidence and complete matrix.
+
+---
+
+## Benchmarks
+
+`benches/bench_parse_mt940.py` sweeps entries per statement and statements
+per file and reports nanoseconds per entry. The number to read is the
+shape: it should stay flat as files grow. Nothing asserts a threshold,
+because wall-clock timings are not comparable between machines; CI runs it
+with `--quick` so it keeps working against the current API.
+
+| Scenario | Result | Environment |
+| :--- | ---: | :--- |
+| One statement, 5,000 entries (466 KiB) | 35.2 ms, 7,043 ns/entry | Apple A18 Pro, CPython 3.12.14, shared machine |
+| 200 statements, 20,000 entries (1.7 MiB) | 169.3 ms, 8,464 ns/entry | Apple A18 Pro, CPython 3.12.14, shared machine |
+| Cost per entry, 5,000 entries vs 10 | 1.07x (linear) | same run |
+
+See [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md) for methodology and full results.
+
+---
+
+## Features
+
+- **One function.** `parse_mt940(text, *, strict=True)` returns a
+  `ParsedDocument` with `message_type` `"camt.053.001.08"`.
+- **One statement per `:20:`.** A file that concatenates statements, one per
+  account or per day, keeps each statement's account, balances and entries
+  apart. `msg_id` is the first `:20:`.
+- **Tag mapping.**
+
+  | Tag | Meaning | Mapped to |
+  | :--- | :--- | :--- |
+  | `:20:` | Transaction reference number | starts a `Statement`; the first is `ParsedDocument.msg_id` |
+  | `:25:` | Account identification (`BIC/account` or `account`) | `Statement.account` (`iban`, or `other_id`, plus `servicer_bic`) |
+  | `:28C:` | Statement / sequence number | `Statement.id` and `Statement.electronic_seq_nb` |
+  | `:60F:` / `:60M:` | Opening balance | `Balance`, `type_code="OPBD"` |
+  | `:61:` | Statement line | `Entry` (amount, indicator, value and booking dates, references) |
+  | `:86:` | Information to account owner | `TransactionDetails.additional_info` on the preceding entry |
+  | `:62F:` / `:62M:` | Closing balance | `Balance`, `type_code="CLBD"` |
+  | `:64:` | Closing available balance | `Balance`, `type_code="CLAV"` |
+  | `:65:` | Forward available balance | `Balance`, `type_code="FWAV"` |
+
+- **Errors name the tag.** `MissingMandatoryFieldError` (a `ValueError`,
+  with `.tag` and `.description`) for a missing or empty `:25:`;
+  `ValueError` for a missing `:20:` or a malformed balance or `:61:` line.
+- **Unknown tags are ignored**, for example `:13D:`, so bank extensions do
+  not break parsing.
+
+---
+
+## Configuration
+
+One keyword-only option:
+
+| Option | Default | Effect |
+| :--- | :--- | :--- |
+| `strict` | `True` | Reject a statement whose `:25:` is absent, empty, or names a servicer BIC with no account. Pass `strict=False` only when the account is known from outside the file (a filename, an SFTP folder) and will be attached afterwards. |
+
+---
 
 ## Examples
 
-Two runnable examples live in `examples/`:
+- [`examples/01_minimal_parse.py`](examples/01_minimal_parse.py): parse a
+  small MT940 statement and print its account, balances and entries.
+- [`examples/02_round_trip_to_dict.py`](examples/02_round_trip_to_dict.py):
+  parse, then `to_dict()` for JSON.
 
-- [`01_minimal_parse.py`](examples/01_minimal_parse.py) - the
-  smallest valid MT940 + parse + inspect.
-- [`02_round_trip_to_xlsx.py`](examples/02_round_trip_to_xlsx.py) -
-  MT940 in, Excel `.xlsx` out (requires `camt053-writer-xlsx`).
+Both run in CI on every pull request, and in `tests/test_regression.py`.
 
-Both are exercised in CI on every commit.
-
-## The camt053 suite
-
-`camt053-loader-mt940` is part of a set of independently installable
-packages built around the [`camt053`][core] library — pick whichever
-ones your stack needs:
-
-| Package | Role |
-| :--- | :--- |
-| [`camt053`](https://pypi.org/project/camt053/) | Core library + CLI + FastAPI REST API |
-| [`camt053-mcp`](https://pypi.org/project/camt053-mcp/) | Model Context Protocol server (for AI agents) |
-| [`camt053-lsp`](https://pypi.org/project/camt053-lsp/) | Language Server Protocol server (for editors) |
-| [`camt053-writer-xlsx`](https://pypi.org/project/camt053-writer-xlsx/) | Excel `.xlsx` writer for parsed statements |
-| [`camt053-loader-mt940`](https://pypi.org/project/camt053-loader-mt940/) | **SWIFT MT940 → camt.053 loader (this package)** |
-
-```mermaid
-flowchart LR
-    A["MT940 text"] -->|parse_mt940| B["camt053-loader-mt940"]
-    B -->|ParsedDocument| C["camt053"]
-    C -->|writer / validator / reversal / MCP / LSP| D["Downstream consumers"]
-```
+---
 
 ## When not to use camt053-loader-mt940
 
-- **You already have native camt.053 input.** Use the camt053 core
-  parser directly — this loader is the bridge for legacy MT940-only
-  data sources, not an alternative for native camt.05x.
-- **You need MT941 / MT942** (intraday-balance / intermediate-statement
-  messages). Out of scope today; the data model supports adding them
-  if you'd like to contribute a separate loader.
-- **You need bank-specific `:86:` sub-field parsing** (e.g. Deutsche
-  Bank's `?20` / `?30` / `?32` GVC codes). The raw `:86:` value is
-  preserved verbatim in `TransactionDetails.additional_info`;
-  downstream tooling can parse it if needed.
-- **You need direct ISO return-reason mapping for `RD` / `RC`** lines.
-  Currently `reversal_indicator=True` is set; mapping to ISO
-  `ExternalReturnReasonCode` is on the v0.0.2 roadmap.
-- **Your MT940 is PGP / GPG encrypted.** Decrypt upstream and pass
-  the plaintext to the loader.
+- **You already have camt.053 XML.** Use the `camt053` parser directly.
+- **You have MT942 interim reports.** Use
+  [`camt053-loader-mt942`][mt942].
+- **You need bank-specific `:86:` sub-fields parsed** (Deutsche Bank's
+  `?20`/`?30`/`?32`, for example). The raw value is kept in
+  `additional_info` for you to parse.
+- **You need ISO return-reason codes on `RC`/`RD` lines.** They are flagged
+  with `reversal_indicator=True` but not mapped to `ExternalReturnReasonCode`.
+- **You need `:28C:`, `:60F:` and `:62F:` enforced.** They are mandatory
+  in MT940 but still accepted when absent.
+- **Your MT940 arrives PGP-encrypted.** Decrypt it first; the loader takes
+  plaintext.
+
+---
 
 ## Development
 
 ```bash
 git clone https://github.com/sebastienrousseau/camt053-loader-mt940
 cd camt053-loader-mt940
-python -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
-pytest                          # 100% line + branch coverage gate
-interrogate camt053_loader_mt940  # 100% docstring gate
-mypy camt053_loader_mt940       # strict
+python -m venv .venv && . .venv/bin/activate
+pip install --require-hashes -r requirements/test.txt -r requirements/lint.txt
+pip install --no-deps -e .
+make check
 ```
+
+`make check` runs ruff, `reuse lint`, mypy in strict mode, the complexity
+ceilings, the version-agreement check, pytest with a 100% line and branch
+coverage gate, interrogate at 100% docstring coverage, the benchmark and
+the examples. CI also runs the dependency audit (`pip-audit`), CodeQL,
+OpenSSF Scorecard, the DCO check and a daily Suite Consistency check against
+PyPI. See [`DEVELOPMENT.md`](DEVELOPMENT.md) and
+[`CONTRIBUTING.md`](CONTRIBUTING.md).
+
+---
 
 ## Security
 
-`camt053-loader-mt940` parses a flat text format with no XML envelope
-— the XXE / billion-laughs surface lives upstream in the `camt053`
-core (defusedxml + xml_guard). Field regexes are anchored and
-bounded, so catastrophic backtracking is not a concern. Reporting
-practice, supported versions, and supply-chain posture (PyPI Trusted
-Publishing, sigstore attestations, signed tags) are documented in
-[`SECURITY.md`](SECURITY.md). Vulnerabilities go via GitHub Private
-Vulnerability Reporting, not public issues.
+The loader parses text: it reads no files, opens no sockets and parses no
+XML, so the XXE surface lives in the `camt053` core. Field patterns are
+anchored with bounded quantifiers, parsing is linear in the input, and
+input outside the grammar is rejected with a `ValueError` naming the tag.
+Releases are published from a signed tag through PyPI Trusted Publishing,
+with SLSA build provenance, sigstore signatures and a CycloneDX SBOM.
+
+Report vulnerabilities according to [`SECURITY.md`](SECURITY.md).
+
+---
 
 ## Documentation
 
-- [`README.md`](README.md) — this file
-- [`CHANGELOG.md`](CHANGELOG.md) — release notes
-- [`SECURITY.md`](SECURITY.md) — disclosure + supported versions
-- [`SUPPORT.md`](SUPPORT.md) — how to get help
-- [`MAINTAINERS.md`](MAINTAINERS.md) — who can merge
-- [`examples/`](examples/) — runnable scripts, exercised in CI
+[User manual](docs/index.md) · [API reference](docs/index.md#the-api) ·
+[Developer guide](DEVELOPMENT.md) ·
+[Family map](#the-camt053-loader-mt940-ecosystem) ·
+[Changelog](CHANGELOG.md) · [Toolchain policy](docs/POLICIES.md)
+
+---
+
+## Stability guarantees
+
+The project is pre-1.0 and versions advance in `0.0.1` steps, in lockstep
+with the camt053 suite. The breaking axis is `parse_mt940`'s signature and
+the `ParsedDocument` it produces for a given input: a change to that output
+is breaking even when no signature moves, and the changelog calls it out
+(0.0.18 rejecting a missing `:25:`, 0.0.23 splitting multi-statement
+files). The Python floor moves only as described in the
+[toolchain policy](docs/POLICIES.md).
+
+---
 
 ## License
 
-Licensed under the [Apache License, Version 2.0][01]. Any contribution
-submitted for inclusion shall be licensed as above, without additional
-terms.
+This project is dual-licensed under either:
 
-## Contributing
+* Apache License, Version 2.0 ([`LICENSE-APACHE`](LICENSE-APACHE) or <https://www.apache.org/licenses/LICENSE-2.0>)
+* MIT License ([`LICENSE-MIT`](LICENSE-MIT) or <https://opensource.org/licenses/MIT>)
 
-Contributions are welcome. Open an issue or PR on
-[the repository](https://github.com/sebastienrousseau/camt053-loader-mt940).
+at your option. Dependencies keep their own licences.
 
-## Acknowledgements
-
-Built on the [`camt053`][core] ISO 20022 Bank Statement library. The
-MT940 grammar follows the SWIFT User Handbook MT940 specification and
-the common-denominator subset shipped by major EU and UK commercial
-banks.
-
-[01]: https://opensource.org/license/apache-2-0/
-[07]: https://pypi.org/project/camt053-loader-mt940/
 [core]: https://github.com/sebastienrousseau/camt053
 [mcp]: https://github.com/sebastienrousseau/camt053-mcp
 [lsp]: https://github.com/sebastienrousseau/camt053-lsp
 [writer]: https://github.com/sebastienrousseau/camt053-writer-xlsx
-[pypi-badge]: https://img.shields.io/pypi/v/camt053-loader-mt940.svg?style=for-the-badge
-[python-versions-badge]: https://img.shields.io/pypi/pyversions/camt053-loader-mt940.svg?style=for-the-badge
-[license-badge]: https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=for-the-badge
-[tests-badge]: https://img.shields.io/github/actions/workflow/status/sebastienrousseau/camt053-loader-mt940/ci.yml?branch=main&label=Tests&style=for-the-badge
-[tests-url]: https://github.com/sebastienrousseau/camt053-loader-mt940/actions/workflows/ci.yml
-[quality-badge]: https://img.shields.io/badge/Coverage-100%25-brightgreen?style=for-the-badge
-[quality-url]: https://github.com/sebastienrousseau/camt053-loader-mt940/actions/workflows/ci.yml
+[mt942]: https://github.com/sebastienrousseau/camt053-loader-mt942
+[mt-940]: https://pypi.org/project/mt-940/
