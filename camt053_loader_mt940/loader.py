@@ -28,6 +28,7 @@ mapped to an :class:`~camt053.models.Entry` with
 
 from __future__ import annotations
 
+import datetime
 import re
 from collections.abc import Iterator
 
@@ -135,7 +136,7 @@ def _parse_balance(value: str, tag: str) -> Balance:
         amount=match.group("amt").replace(",", "."),
         currency=match.group("ccy"),
         credit_debit_indicator=("CRDT" if match.group("dc") == "C" else "DBIT"),
-        date=_format_yymmdd(match.group("date")),
+        date=_format_yymmdd(match.group("date"), tag),
     )
 
 
@@ -157,7 +158,7 @@ def _parse_entry(value: str) -> Entry:
         booking_date=_format_yymmdd_with_year_hint(
             match.group("bdate"), match.group("vdate")
         ),
-        value_date=_format_yymmdd(match.group("vdate")),
+        value_date=_format_yymmdd(match.group("vdate"), "61"),
         account_servicer_ref=customer_ref.strip() or None,
         reversal_indicator=is_reversal,
     )
@@ -188,16 +189,25 @@ def _parse_account(value: str) -> Account:
     )
 
 
-def _format_yymmdd(value: str) -> str:
+def _format_yymmdd(value: str, tag: str) -> str:
     """Format a 6-char ``YYMMDD`` date as ISO ``YYYY-MM-DD``.
 
     Years are interpreted with a sliding window: 00-79 → 20YY, 80-99 →
     19YY. This matches MT940 industry practice and is correct for any
     real statement date in the 1980-2079 range.
+
+    Raises:
+        ValueError: If the date does not exist (``000000``, 30 February),
+            naming ``tag``.
     """
     year = int(value[0:2])
     century = 2000 if year < 80 else 1900
-    return f"{century + year:04d}-{value[2:4]}-{value[4:6]}"
+    iso = f"{century + year:04d}-{value[2:4]}-{value[4:6]}"
+    try:
+        datetime.date.fromisoformat(iso)
+    except ValueError:
+        raise ValueError(f"Invalid date {value!r} in :{tag}:") from None
+    return iso
 
 
 def _format_yymmdd_with_year_hint(
@@ -212,7 +222,7 @@ def _format_yymmdd_with_year_hint(
     """
     if booking_mmdd is None:
         return None
-    return _format_yymmdd(value_yymmdd[0:2] + booking_mmdd)
+    return _format_yymmdd(value_yymmdd[0:2] + booking_mmdd, "61")
 
 
 # ─── Errors ─────────────────────────────────────────────────────────────────

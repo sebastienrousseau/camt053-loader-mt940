@@ -154,6 +154,38 @@ class TestAmountsAreNumbers:
         assert balance.amount == expected
 
 
+class TestDatesExist:
+    """Documented: input outside the grammar is a ``ValueError`` (SECURITY.md).
+
+    Six digits were enough: ``000000`` became the date ``2000-00-00`` and
+    ``260230`` became 30 February. A date that does not exist cannot be
+    booked, so it is rejected at the boundary, naming the tag.
+    """
+
+    @pytest.mark.parametrize("date", ["000000", "260230", "261301", "260600"])
+    def test_an_impossible_balance_date_is_rejected(self, date: str) -> None:
+        payload = STATEMENT.replace("C260620EUR1000,00", f"C{date}EUR1000,00")
+        with pytest.raises(ValueError, match=":60F:"):
+            parse_mt940(payload)
+
+    @pytest.mark.parametrize("date", ["000000", "260230", "261301"])
+    def test_an_impossible_value_date_is_rejected(self, date: str) -> None:
+        payload = STATEMENT.replace(":61:2606210621CR", f":61:{date}0621CR")
+        with pytest.raises(ValueError, match=":61:"):
+            parse_mt940(payload)
+
+    @pytest.mark.parametrize("mmdd", ["0000", "0230", "1301"])
+    def test_an_impossible_booking_date_is_rejected(self, mmdd: str) -> None:
+        payload = STATEMENT.replace(":61:2606210621CR", f":61:260621{mmdd}CR")
+        with pytest.raises(ValueError, match=":61:"):
+            parse_mt940(payload)
+
+    def test_a_leap_day_is_a_real_date(self) -> None:
+        payload = STATEMENT.replace("C260620EUR1000,00", "C280229EUR1000,00")
+        balance = parse_mt940(payload).statements[0].balances[0]
+        assert balance.date == "2028-02-29"
+
+
 class TestMandatoryFields:
     """What the parser refuses, and the one escape hatch.
 
