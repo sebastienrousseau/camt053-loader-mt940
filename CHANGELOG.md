@@ -15,7 +15,7 @@ together at one version, core first.
 ## [0.0.23] - 2026-10-20
 
 The camt053 suite's 0.0.23 release, which brings every member back to one
-version after `camt053-mcp` published 0.0.22 alone. Three parser fixes that
+version after `camt053-mcp` published 0.0.22 alone. Four parser fixes that
 change what some inputs produce, fuzzing that found two of them, and the
 repository brought up to the family's supply-chain, licensing and
 documentation standard.
@@ -37,6 +37,11 @@ documentation standard.
   `amount_decimal` is `None`. An amount is now at least one integer digit and
   at most one decimal comma; anything else raises `ValueError` naming the
   tag. `1000,00`, `1000,` and `7` parse as before.
+- **A booking date across the year end takes the right year.** A `:61:`
+  booking date is `MMDD` and borrowed the value date's year, so a 2 January
+  booking of a 31 December value date landed on 2 January of the same year,
+  twelve months early. It now takes the year, of the value date's and the
+  one either side, nearest the value date.
 - **Dates that do not exist are rejected.** Any six digits were a date:
   `000000` became `2000-00-00` and `260230` became 30 February, in balances
   and in `:61:` value and booking dates. They now raise `ValueError` naming

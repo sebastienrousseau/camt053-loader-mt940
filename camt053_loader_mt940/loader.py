@@ -214,15 +214,30 @@ def _format_yymmdd_with_year_hint(
     booking_mmdd: str | None,
     value_yymmdd: str,
 ) -> str | None:
-    """Format the booking date, borrowing the year from the value date.
+    """Format the booking date, inferring its year from the value date.
 
     MT940 :61: lines carry a 6-char value date (YYMMDD) and an
-    optional 4-char booking date (MMDD); the booking date inherits
-    its year from the value date.
+    optional 4-char booking date (MMDD). The booking date takes the
+    year, of the value date's year and the one either side, that puts
+    it nearest the value date: a 2 January booking of a 31 December
+    value date belongs to the next year, not the same one.
+
+    Raises:
+        ValueError: If either date does not exist, naming ``:61:``.
     """
     if booking_mmdd is None:
         return None
-    return _format_yymmdd(value_yymmdd[0:2] + booking_mmdd, "61")
+    value = datetime.date.fromisoformat(_format_yymmdd(value_yymmdd, "61"))
+    month, day = int(booking_mmdd[:2]), int(booking_mmdd[2:])
+    candidates = []
+    for year in (value.year - 1, value.year, value.year + 1):
+        try:
+            candidates.append(datetime.date(year, month, day))
+        except ValueError:
+            continue
+    if not candidates:
+        raise ValueError(f"Invalid date {booking_mmdd!r} in :61:")
+    return min(candidates, key=lambda date: abs(date - value)).isoformat()
 
 
 # ─── Errors ─────────────────────────────────────────────────────────────────

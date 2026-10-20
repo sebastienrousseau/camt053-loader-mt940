@@ -186,6 +186,32 @@ class TestDatesExist:
         assert balance.date == "2028-02-29"
 
 
+class TestBookingDateAcrossTheYearEnd:
+    """A :61: booking date is MMDD, and its year is inferred.
+
+    Borrowing the value date's year put a 2 January booking of a
+    31 December value date a year early, on 2026-01-02. The booking date
+    takes the year that puts it nearest the value date.
+    """
+
+    @staticmethod
+    def _booking(line: str) -> str | None:
+        payload = STATEMENT.replace(":61:2606210621CR", f":61:{line}CR")
+        return parse_mt940(payload).statements[0].entries[0].booking_date
+
+    def test_a_january_booking_of_a_december_value_is_next_year(self) -> None:
+        assert self._booking("2612310102") == "2027-01-02"
+
+    def test_a_december_booking_of_a_january_value_is_last_year(self) -> None:
+        assert self._booking("2701021231") == "2026-12-31"
+
+    def test_the_same_month_keeps_the_value_year(self) -> None:
+        assert self._booking("2606210621") == "2026-06-21"
+
+    def test_a_leap_day_booking_finds_its_leap_year(self) -> None:
+        assert self._booking("2802280229") == "2028-02-29"
+
+
 class TestMandatoryFields:
     """What the parser refuses, and the one escape hatch.
 

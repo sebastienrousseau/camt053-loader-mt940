@@ -295,8 +295,8 @@ The project is pre-1.0 and versions advance in `0.0.1` steps, in lockstep
 with the camt053 suite. The breaking axis is `parse_mt940`'s signature and
 the `ParsedDocument` it produces for a given input: a change to that output
 is breaking even when no signature moves, and the changelog calls it out
-(0.0.18 rejecting a missing `:25:`; 0.0.23 splitting multi-statement files
-and rejecting malformed amounts and dates). The Python floor moves only as described in the
+(0.0.18 rejecting a missing `:25:`; 0.0.23 splitting multi-statement files,
+rejecting malformed amounts and dates, and dating year-end bookings). The Python floor moves only as described in the
 [toolchain policy](docs/POLICIES.md).
 
 ---
