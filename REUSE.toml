@@ -16,3 +16,11 @@ path = [
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 Sebastien Rousseau <sebastian.rousseau@gmail.com>"
 SPDX-License-Identifier = "Apache-2.0 OR MIT"
+
+# The Developer Certificate of Origin text is the Linux Foundation's,
+# distributed verbatim under its own terms.
+[[annotations]]
+path = "DCO.txt"
+precedence = "override"
+SPDX-FileCopyrightText = "2004, 2006 The Linux Foundation and its contributors"
+SPDX-License-Identifier = "LicenseRef-DCO"

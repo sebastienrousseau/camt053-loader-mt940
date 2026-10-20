@@ -1,0 +1,8 @@
+# SPDX-FileCopyrightText: 2026 Sebastien Rousseau <sebastian.rousseau@gmail.com>
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+#
+# Code owners for camt053-loader-mt940: requested for review on every
+# pull request. See
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+*       @sebastienrousseau
