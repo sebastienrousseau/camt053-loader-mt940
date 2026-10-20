@@ -122,6 +122,38 @@ class TestDocumentedShape:
         }
 
 
+class TestAmountsAreNumbers:
+    """Documented: input outside the grammar is a ``ValueError`` (SECURITY.md).
+
+    An MT940 amount is digits with one decimal comma. ``[\\d,]+`` let
+    ``1,2,3`` through as the amount ``"1.2.3"`` and a bare ``,`` as ``"."``;
+    neither is a number, and ``amount_decimal`` came back ``None``.
+    """
+
+    @pytest.mark.parametrize("amount", ["1,2,3", ",", ",5", "1,,0"])
+    def test_a_malformed_balance_amount_is_rejected(self, amount: str) -> None:
+        payload = STATEMENT.replace("C260620EUR1000,00", f"C260620EUR{amount}")
+        with pytest.raises(ValueError, match=":60F:"):
+            parse_mt940(payload)
+
+    @pytest.mark.parametrize("amount", ["1,2,3", ",", ",5", "1,,0"])
+    def test_a_malformed_entry_amount_is_rejected(self, amount: str) -> None:
+        payload = STATEMENT.replace("CR500,00NMSC", f"CR{amount}NMSC")
+        with pytest.raises(ValueError, match=":61:"):
+            parse_mt940(payload)
+
+    @pytest.mark.parametrize(
+        ("amount", "expected"),
+        [("1000,00", "1000.00"), ("1000,", "1000."), ("7", "7")],
+    )
+    def test_well_formed_amounts_still_parse(
+        self, amount: str, expected: str
+    ) -> None:
+        payload = STATEMENT.replace("C260620EUR1000,00", f"C260620EUR{amount}")
+        balance = parse_mt940(payload).statements[0].balances[0]
+        assert balance.amount == expected
+
+
 class TestMandatoryFields:
     """What the parser refuses, and the one escape hatch.
 

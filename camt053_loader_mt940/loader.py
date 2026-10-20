@@ -74,10 +74,15 @@ _BALANCE_TAG_TO_TYPE = {
 # chars, optionally followed by a single letter (e.g. 60F, 28C).
 _FIELD_HEAD_RE = re.compile(r"^:(\d{2}[A-Z]?):", re.MULTILINE)
 
+# An MT940 amount: at least one integer digit, then at most one decimal
+# comma and its fraction ("1000,00", "1000,", "7"). A looser [\d,]+ let
+# "1,2,3" and "," through as the non-numbers "1.2.3" and ".".
+_AMOUNT = r"\d+(?:,\d*)?"
+
 # :60F:C240621EUR1000,00
 #       ^DC ^YYMMDD ^CCY ^Amount
 _BALANCE_RE = re.compile(
-    r"^(?P<dc>C|D)(?P<date>\d{6})(?P<ccy>[A-Z]{3})(?P<amt>[\d,]+)$"
+    rf"^(?P<dc>C|D)(?P<date>\d{{6}})(?P<ccy>[A-Z]{{3}})(?P<amt>{_AMOUNT})$"
 )
 
 # :61:2406210621D1000,00N123ABC//REF1
@@ -88,7 +93,7 @@ _LINE_RE = re.compile(
     r"(?P<bdate>\d{4})?"
     r"(?P<dc>RC|RD|C|D)"
     r"(?P<fund_code>[A-Z])?"
-    r"(?P<amt>[\d,]+)"
+    rf"(?P<amt>{_AMOUNT})"
     r"(?P<txcode>[A-Z][A-Z0-9]{3})"
     r"(?P<rest>.*)$"
 )
