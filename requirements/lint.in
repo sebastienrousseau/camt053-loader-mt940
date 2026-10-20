@@ -10,3 +10,5 @@ ruff==0.17.1
 mypy>=1.11,<3
 tomli>=2
 reuse[charset-normalizer]>=5.0
+# The complexity gate is type-checked with its own tools installed.
+-r complexity.in

@@ -114,3 +114,9 @@ strict = true
 [[tool.mypy.overrides]]
 module = "camt053.*"
 ignore_missing_imports = true
+
+# radon ships no type information (no py.typed, no stubs). It is used only
+# by scripts/check_complexity.py, whose own code is still checked strictly.
+[[tool.mypy.overrides]]
+module = "radon.*"
+ignore_missing_imports = true
