@@ -18,7 +18,9 @@ jobs:
     name: Release Notes Present
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Every version must have release notes
         run: |
           set -euo pipefail
@@ -39,22 +41,25 @@ jobs:
       matrix:
         python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: ${{ matrix.python-version }}
-          cache: "pip"
 
-      - name: Install dev dependencies
+      # Hash-pinned install (OpenSSF Scorecard Pinned-Dependencies). The
+      # package itself installs with --no-deps on top of the pinned tree.
+      - name: Install dependencies (hash-pinned)
         run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[dev]"
+          pip install --require-hashes -r requirements/test.txt
+          pip install --no-deps -e .
 
       - name: Run tests with 100% coverage gate
         run: |
-          pytest tests/ \
+          python -m pytest tests/ \
             --cov=camt053_loader_mt940 --cov-branch \
             --cov-report=term-missing \
             --cov-report=xml \
@@ -81,24 +86,49 @@ jobs:
     name: Lint & Type Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
-          cache: "pip"
 
-      - name: Install dev dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[dev]"
+      - name: Install lint tools (hash-pinned)
+        run: pip install --require-hashes -r requirements/lint.txt
 
       - name: Ruff check
-        run: ruff check camt053_loader_mt940/ tests/ examples/ benches/
+        run: ruff check camt053_loader_mt940/ tests/ examples/ benches/ scripts/
 
       - name: Ruff format check
-        run: ruff format --check camt053_loader_mt940/ tests/ examples/ benches/
+        run: ruff format --check camt053_loader_mt940/ tests/ examples/ benches/ scripts/
 
       - name: Mypy
-        run: mypy camt053_loader_mt940/
+        run: mypy camt053_loader_mt940/ scripts/
+
+  # The native advisory audit, over the same hash-pinned tree the tests
+  # install, so a published advisory against camt053 or anything it pulls
+  # in fails the pull request rather than waiting for a Dependabot alert.
+  audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Install pip-audit (hash-pinned)
+        run: pip install --require-hashes -r requirements/audit.txt
+
+      - name: pip-audit
+        run: |
+          for f in requirements/*.txt; do
+            echo "--- $f ---"
+            pip-audit --progress-spinner off --require-hashes --disable-pip -r "$f"
+          done

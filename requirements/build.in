@@ -1,0 +1,9 @@
+# SPDX-FileCopyrightText: 2026 Sebastien Rousseau <sebastian.rousseau@gmail.com>
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+# Build and publish tooling for the release job and the local preflight.
+# hatchling is pinned here because the build runs with --no-isolation,
+# which keeps the backend pinned by hash rather than fetched at build time.
+# Regenerate with: make pip-compile
+build
+hatchling>=1.21
+twine
