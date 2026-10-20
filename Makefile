@@ -5,10 +5,10 @@
 # Install them first into a virtual environment:
 #   pip install --require-hashes -r requirements/test.txt
 #   pip install --no-deps -e .
-.PHONY: help test lint format type-check complexity audit verify-versions pip-compile benchmark examples demo check clean
+.PHONY: help test lint format type-check complexity audit verify-versions pip-compile benchmark examples fuzz demo check clean
 
 PYTHON ?= python3
-SOURCES = camt053_loader_mt940/ tests/ examples/ benches/ scripts/
+SOURCES = camt053_loader_mt940/ tests/ examples/ benches/ scripts/ fuzz/
 
 help: ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -32,7 +32,7 @@ type-check: ## mypy --strict over the package and scripts
 
 complexity: ## Complexity ceilings against complexity-baseline.json (needs requirements/complexity.txt)
 	$(PYTHON) scripts/check_complexity.py
-	complexipy camt053_loader_mt940 scripts benches examples --max-complexity-allowed 15 --quiet
+	complexipy camt053_loader_mt940 scripts benches examples fuzz --max-complexity-allowed 15 --quiet
 
 audit: ## pip-audit every hash-pinned requirements file (needs requirements/audit.txt)
 	@for f in requirements/*.txt; do \
@@ -46,16 +46,23 @@ verify-versions: ## Every restatement of the version agrees with pyproject.toml
 pip-compile: ## Regenerate hash-pinned requirements/*.txt from requirements/*.in
 	@command -v uv >/dev/null || { echo "uv is required: https://docs.astral.sh/uv/"; exit 1; }
 	@for f in requirements/*.in; do \
+		[ "$$f" = requirements/fuzz.in ] && continue; \
 		echo "compiling $$f"; \
 		uv pip compile --quiet --generate-hashes --universal \
 			--python-version 3.10 "$$f" -o "$${f%.in}.txt"; \
 	done
+	@echo "compiling requirements/fuzz.in (Linux x86_64, Atheris wheels only)"
+	@uv pip compile --quiet --generate-hashes --python-platform x86_64-manylinux_2_17 \
+		--python-version 3.12 requirements/fuzz.in -o requirements/fuzz.txt
 
 benchmark: ## Run the benchmark in quick mode
 	$(PYTHON) benches/bench_parse_mt940.py --quick
 
 examples: ## Run every example end to end
 	@for example in examples/*.py; do echo "--- $$example"; $(PYTHON) "$$example" || exit 1; done
+
+fuzz: ## Atheris for FUZZ_SECONDS (default 60); Linux x86_64, needs requirements/fuzz.txt
+	$(PYTHON) fuzz/fuzz_parse_mt940.py fuzz/corpus -max_total_time=$(or $(FUZZ_SECONDS),60)
 
 demo: ## Re-render .github/demo.gif from .github/demo.tape (needs vhs)
 	vhs .github/demo.tape

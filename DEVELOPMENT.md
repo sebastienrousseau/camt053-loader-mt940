@@ -27,12 +27,13 @@ hashes.
 | Lint & Type Check | `make lint type-check` (ruff, ruff format, `reuse lint`, mypy strict) |
 | Complexity | `make complexity` (needs `requirements/complexity.txt`) |
 | Dependency audit | `make audit` (needs `requirements/audit.txt`) |
+| Fuzz (Atheris) | `make fuzz` (Linux x86_64 only, needs `requirements/fuzz.txt`); `tests/test_fuzz.py` replays `fuzz/corpus/` and runs the same contract with Hypothesis anywhere |
 | Version sources agree | `make verify-versions` |
 | Release Notes Present | `releases/v<version>.md` must exist |
 | DCO | every commit carries `Signed-off-by:` (`git commit -s`) |
 
 `make check` runs all of these except the audit, which needs network
-access. CodeQL, OpenSSF Scorecard and the daily Suite Consistency check
+access, and Atheris, which needs Linux x86_64. CodeQL, OpenSSF Scorecard and the daily Suite Consistency check
 (`python3 scripts/check_suite_consistency.py`, which queries PyPI) run only
 on GitHub.
 
@@ -57,6 +58,8 @@ Commit both.
   examples and the benchmark run as subprocesses.
 - `tests/test_stress.py`: large payloads, marked `perf` and excluded by
   default; run with `pytest -m perf --no-cov`.
+- `tests/test_fuzz.py`: the parser's contract on any input (Hypothesis),
+  and a replay of every seed and fixed-bug input in `fuzz/corpus/`.
 - `tests/test_check_*.py`, `tests/test_verify_versions.py`: the scripts in
   `scripts/`.
 - `tests/test_suite_conformance.py`: vendored from one canonical copy

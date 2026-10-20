@@ -2,8 +2,9 @@
 # SPDX-License-Identifier: Apache-2.0 OR MIT
 
 # Licensing for files that cannot carry a comment header: generated
-# lockfiles, the JSON complexity baseline, the demo GIF, and the release
-# notes, which release.yml publishes verbatim as the GitHub release body.
+# lockfiles, the JSON complexity baseline, the demo GIF, the fuzz corpus
+# (raw MT940 inputs), and the release notes, which release.yml publishes
+# verbatim as the GitHub release body.
 # Checked by `reuse lint` in CI.
 version = 1
 
@@ -13,6 +14,7 @@ path = [
   "complexity-baseline.json",
   "releases/*.md",
   ".github/demo.gif",
+  "fuzz/corpus/*",
 ]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 Sebastien Rousseau <sebastian.rousseau@gmail.com>"

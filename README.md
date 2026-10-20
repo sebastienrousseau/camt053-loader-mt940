@@ -256,9 +256,10 @@ make check
 `make check` runs ruff, `reuse lint`, mypy in strict mode, the complexity
 ceilings, the version-agreement check, pytest with a 100% line and branch
 coverage gate, interrogate at 100% docstring coverage, the benchmark and
-the examples. CI also runs the dependency audit (`pip-audit`), CodeQL,
-OpenSSF Scorecard, the DCO check and a daily Suite Consistency check against
-PyPI. See [`DEVELOPMENT.md`](DEVELOPMENT.md) and
+the examples. CI also runs the dependency audit (`pip-audit`), Atheris fuzzing of
+`parse_mt940` (two minutes per change, thirty weekly, seeded from
+`fuzz/corpus/`), CodeQL, OpenSSF Scorecard, the DCO check and a daily Suite
+Consistency check against PyPI. See [`DEVELOPMENT.md`](DEVELOPMENT.md) and
 [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ---
@@ -268,7 +269,9 @@ PyPI. See [`DEVELOPMENT.md`](DEVELOPMENT.md) and
 The loader parses text: it reads no files, opens no sockets and parses no
 XML, so the XXE surface lives in the `camt053` core. Field patterns are
 anchored with bounded quantifiers, parsing is linear in the input, and
-input outside the grammar is rejected with a `ValueError` naming the tag.
+input outside the grammar (including amounts that are not numbers and dates
+that do not exist) is rejected with a `ValueError` naming the tag. The
+parser is fuzzed with Atheris in CI and with Hypothesis in the test suite.
 Releases are published from a signed tag through PyPI Trusted Publishing,
 with SLSA build provenance, sigstore signatures and a CycloneDX SBOM.
 

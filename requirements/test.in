@@ -10,6 +10,8 @@ pytest>=9.0.3,<10
 pytest-cov>=6.0.0,<8
 interrogate>=1.7
 packaging>=23
+# tests/test_fuzz.py: property-based fuzzing of parse_mt940.
+hypothesis>=6.100
 tomli>=2 ; python_version < "3.11"
 # tests/test_check_complexity.py imports the gate, so its tools are here too.
 -r complexity.in
