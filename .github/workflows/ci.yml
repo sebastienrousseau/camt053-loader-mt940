@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 Sebastien Rousseau <sebastian.rousseau@gmail.com>
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+
 name: CI
 
 on:
@@ -106,6 +109,12 @@ jobs:
 
       - name: Mypy
         run: mypy camt053_loader_mt940/ scripts/
+
+      # Every file's copyright and licence (Apache-2.0 OR MIT) is
+      # machine-readable: an SPDX header, or REUSE.toml for files that
+      # cannot carry one.
+      - name: REUSE compliance
+        run: reuse lint
 
   # The native advisory audit, over the same hash-pinned tree the tests
   # install, so a published advisory against camt053 or anything it pulls

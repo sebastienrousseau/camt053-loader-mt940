@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Sebastien Rousseau <sebastian.rousseau@gmail.com>
+# SPDX-License-Identifier: Apache-2.0 OR MIT
 """The version must be identical everywhere it is stated.
 
 `pyproject.toml` and `camt053_loader_mt940/__init__.py` each carry the version
