@@ -5,7 +5,7 @@
 # Install them first into a virtual environment:
 #   pip install --require-hashes -r requirements/test.txt
 #   pip install --no-deps -e .
-.PHONY: help test lint format type-check audit pip-compile benchmark examples check clean
+.PHONY: help test lint format type-check audit verify-versions pip-compile benchmark examples check clean
 
 PYTHON ?= python3
 SOURCES = camt053_loader_mt940/ tests/ examples/ benches/ scripts/
@@ -35,6 +35,9 @@ audit: ## pip-audit every hash-pinned requirements file (needs requirements/audi
 		pip-audit --progress-spinner off --require-hashes --disable-pip -r "$$f" || exit 1; \
 	done
 
+verify-versions: ## Every restatement of the version agrees with pyproject.toml
+	$(PYTHON) scripts/verify_versions.py
+
 pip-compile: ## Regenerate hash-pinned requirements/*.txt from requirements/*.in
 	@command -v uv >/dev/null || { echo "uv is required: https://docs.astral.sh/uv/"; exit 1; }
 	@for f in requirements/*.in; do \
@@ -49,7 +52,7 @@ benchmark: ## Run the benchmark in quick mode
 examples: ## Run every example end to end
 	@for example in examples/*.py; do echo "--- $$example"; $(PYTHON) "$$example" || exit 1; done
 
-check: lint type-check test benchmark examples ## Everything CI runs on a pull request
+check: lint type-check verify-versions test benchmark examples ## Everything CI runs on a pull request
 
 clean: ## Remove build artefacts and caches
 	rm -rf build/ dist/ *.egg-info .pytest_cache/ .mypy_cache/ .ruff_cache/ htmlcov/ coverage.xml .coverage
