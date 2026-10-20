@@ -3,7 +3,7 @@
 
 [project]
 name = "camt053-loader-mt940"
-version = "0.0.20"
+version = "0.0.23"
 description = "Convert legacy SWIFT MT940 bank statements to camt.053 ParsedDocument."
 readme = "README.md"
 requires-python = ">=3.10"

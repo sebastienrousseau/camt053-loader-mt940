@@ -8,8 +8,72 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 This package's version follows the [`camt053`](https://github.com/sebastienrousseau/camt053)
-suite (`camt053`, `camt053-mcp`, `camt053-lsp`, `camt053-writer-xlsx`); a
-`0.0.X` release of this package targets the `0.0.X` release of `camt053`.
+suite (`camt053`, `camt053-lsp`, `camt053-mcp`, `camt053-loader-mt940`,
+`camt053-loader-mt942`, `camt053-writer-xlsx`), which releases every member
+together at one version, core first.
+
+## [0.0.23] - 2026-10-20
+
+The camt053 suite's 0.0.23 release, which brings every member back to one
+version after `camt053-mcp` published 0.0.22 alone. One parser fix that
+changes output for multi-statement files, and the repository brought up to
+the family's supply-chain, licensing and documentation standard.
+
+### Fixed
+
+- **A file carrying several MT940 statements now returns one `Statement`
+  per `:20:`.** It used to return a single statement holding every entry
+  and balance in the file under the last `:25:` account, with the last
+  `:28C:` as its id and the last `:20:` as `msg_id`, and an `:86:` opening
+  a later statement was appended to the previous statement's last entry.
+  `docs/index.md` already documented one statement per `:20:`. This changes
+  the output for multi-statement input, so it is called out here as a
+  behaviour change; a single-statement payload parses exactly as before.
+  `msg_id` is now the first `:20:`, and `strict` and the `:20:` check apply
+  to every statement.
+- `scripts/check_suite_consistency.py` compared this tree with the
+  `camt053` core's PyPI release instead of this package's, so a 0.0.23
+  tree that was never tagged here would have passed once the core shipped.
+  It is now the shared lockstep copy with `THIS = "camt053-loader-mt940"`.
+  The scheduled Suite Consistency run has been red since 2026-10-05
+  (`camt053-mcp` 0.0.22 against 0.0.20); it clears when the suite
+  publishes 0.0.23.
+
+### Changed
+
+- Requires `camt053 >= 0.0.20` (was `>= 0.0.16`), the newest core release.
+- `parse_mt940` is split into helpers under the complexity ceilings; no
+  behaviour change beyond the fix above.
+- Release workflow: every action pinned by commit SHA, build tooling from
+  hash-pinned requirements with `--no-isolation`, the GitHub release titled
+  `camt053-loader-mt940 <version>` instead of the tag, every version source
+  checked before building, a CycloneDX SBOM attached, and PEP 740
+  attestations uploaded to PyPI.
+- README rewritten to the family template, with a rendered demo; it no
+  longer claims Apache-2.0 only, a 0.0.14 latest release or an example that
+  does not exist.
+- SPDX headers say `Apache-2.0 OR MIT` everywhere (most said `Apache-2.0`),
+  and the wheel carries the MIT classifier beside the Apache one.
+
+### Added
+
+- CI installs from hash-pinned `requirements/*.txt`, pins every action by
+  SHA, and audits every requirements file with `pip-audit`.
+- OpenSSF Scorecard, DCO, "Version sources agree" and Complexity workflows
+  and jobs. `scripts/verify_versions.py` checks `pyproject.toml`,
+  `__version__`, this changelog, `CITATION.cff`, `releases/`, the README
+  callout and `SECURITY.md`. `scripts/check_complexity.py` holds cyclomatic
+  10, cognitive 15, Halstead 30 and 60 lines per function against an empty
+  baseline.
+- `reuse lint` compliance (`LICENSES/`, `REUSE.toml`), `CITATION.cff`,
+  Dependabot version updates, a pull request template, issue templates,
+  `CODEOWNERS`, `CODE_OF_CONDUCT.md`, `DEVELOPMENT.md`, a `Makefile`, and
+  `docs/POLICIES.md`, `docs/COMPARISON.md`, `docs/BENCHMARKS.md`.
+
+### Known gap
+
+Unchanged from 0.0.18: `:28C:`, `:60F:` and `:62F:` are still accepted when
+absent.
 
 ## [0.0.20] - 2026-08-29
 

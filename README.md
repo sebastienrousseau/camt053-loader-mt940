@@ -66,8 +66,8 @@
 pip install camt053-loader-mt940
 ```
 
-> **Latest release: v0.0.20**: rejects a statement whose `:25:` names no
-> account (since 0.0.18), in lockstep with the camt053 suite, for
+> **Latest release: v0.0.23**: one `Statement` per `:20:` in a
+> multi-statement file, released in lockstep with the camt053 suite, for
 > Python 3.10+.
 
 The package pulls in [`camt053`][core] (0.0.20 or newer, below 1) and nothing
