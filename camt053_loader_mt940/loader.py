@@ -316,48 +316,56 @@ def parse_mt940(text: str, *, strict: bool = True) -> ParsedDocument:
         seen.add(tag)
         if tag == "20":
             msg_id = value or None
-        elif tag == "25":
-            statement.account = _parse_account(value)
-        elif tag == "28C":
-            statement.electronic_seq_nb = value
-            statement.id = value
-        elif tag in {"60F", "60M", "62F", "62M", "64", "65"}:
-            statement.balances.append(_parse_balance(value, tag))
         elif tag == "61":
-            entry = _parse_entry(value)
-            statement.entries.append(entry)
-            last_entry = entry
+            last_entry = _parse_entry(value)
+            statement.entries.append(last_entry)
         elif tag == "86":
             _attach_additional_info(last_entry, value)
-        # Unknown tags are silently ignored so future SWIFT additions
-        # do not break parsing; the loader follows Postel's law here.
+        else:
+            _apply_statement_field(statement, tag, value)
 
     if msg_id is None:
         raise ValueError("MT940 payload missing required :20: reference")
 
     if strict:
-        for tag, description in _MANDATORY_UNDER_STRICT:
-            if tag not in seen:
-                raise MissingMandatoryFieldError(
-                    tag, description, "it is absent"
-                )
-        # A bare ``:25:`` is present but identifies nothing. The BIC alone
-        # does not count: it names the servicer, not the account, and a
-        # statement that says which bank but not which account reconciles
-        # against just as little as one that says neither.
-        account = statement.account
-        if account is None or not (account.iban or account.other_id):
-            raise MissingMandatoryFieldError(
-                "25",
-                "Account Identification",
-                "it carries no account number",
-            )
+        _require_account(statement, seen)
 
     return ParsedDocument(
         message_type="camt.053.001.08",
         msg_id=msg_id,
         statements=[statement],
     )
+
+
+def _apply_statement_field(statement: Statement, tag: str, value: str) -> None:
+    """Apply a statement-level field (``:25:``, ``:28C:``, balances)."""
+    if tag == "25":
+        statement.account = _parse_account(value)
+    elif tag == "28C":
+        statement.electronic_seq_nb = value
+        statement.id = value
+    elif tag in _BALANCE_TAG_TO_TYPE:
+        statement.balances.append(_parse_balance(value, tag))
+    # Unknown tags are silently ignored so future SWIFT additions
+    # do not break parsing; the loader follows Postel's law here.
+
+
+def _require_account(statement: Statement, seen: set[str]) -> None:
+    """Raise unless ``:25:`` was present and names an account."""
+    for tag, description in _MANDATORY_UNDER_STRICT:
+        if tag not in seen:
+            raise MissingMandatoryFieldError(tag, description, "it is absent")
+    # A bare ``:25:`` is present but identifies nothing. The BIC alone
+    # does not count: it names the servicer, not the account, and a
+    # statement that says which bank but not which account reconciles
+    # against just as little as one that says neither.
+    account = statement.account
+    if account is None or not (account.iban or account.other_id):
+        raise MissingMandatoryFieldError(
+            "25",
+            "Account Identification",
+            "it carries no account number",
+        )
 
 
 def _attach_additional_info(entry: Entry | None, value: str) -> None:
