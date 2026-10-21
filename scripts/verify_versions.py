@@ -11,7 +11,14 @@ must appear as:
 * ``version:`` in ``CITATION.cff``;
 * the heading of ``releases/vX.Y.Z.md``, which release.yml publishes;
 * the "Latest release: vX.Y.Z" callout in ``README.md``, when present;
-* the "(latest)" row of the supported-versions table in ``SECURITY.md``.
+* the "(latest)" row of the supported-versions table in ``SECURITY.md``;
+* the ``camt053 >=`` floor in ``pyproject.toml`` and in every
+  ``requirements/*.in`` that declares one (``requirements/runtime.in``
+  must).
+
+The camt053 suite releases together at one version, core first, so the
+floor on the core is this version: a lower one lets an older core, and
+the older advisory floors it declares, resolve under this release.
 
 This package has published a release whose ``__version__`` disagreed with
 its metadata (0.0.16), and a README and a security policy announcing a
@@ -105,6 +112,31 @@ def _security(root: Path, expected: str) -> list[str]:
     return [f"SECURITY.md: latest supported version is {found}"]
 
 
+#: Files that must declare a ``camt053 >=`` floor.
+FLOOR_REQUIRED = ("pyproject.toml", "requirements/runtime.in")
+
+_FLOOR = re.compile(r'^\s*"?camt053\s*>=\s*([0-9][0-9.]*)', re.MULTILINE)
+
+
+def _floor_sources(root: Path) -> list[str]:
+    found = {str(p.relative_to(root)) for p in root.glob("requirements/*.in")}
+    return sorted(found | set(FLOOR_REQUIRED))
+
+
+def _camt053_floor(root: Path, expected: str) -> list[str]:
+    out: list[str] = []
+    for name in _floor_sources(root):
+        floors = _FLOOR.findall(_read(root, name) or "")
+        if not floors and name in FLOOR_REQUIRED:
+            out.append(f"{name}: no camt053>= floor")
+        out.extend(
+            f"{name}: camt053>={floor}, the suite is at {expected}"
+            for floor in floors
+            if floor != expected
+        )
+    return out
+
+
 def problems(root: Path = ROOT) -> list[str]:
     """Every restatement of the version that disagrees with pyproject."""
     expected = pyproject_version(root)
@@ -115,6 +147,7 @@ def problems(root: Path = ROOT) -> list[str]:
         _release_notes,
         _readme,
         _security,
+        _camt053_floor,
     )
     return [problem for check in checks for problem in check(root, expected)]
 

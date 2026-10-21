@@ -23,6 +23,7 @@ SOURCES = (
     "README.md",
     "SECURITY.md",
     "camt053_loader_mt940/__init__.py",
+    "requirements/runtime.in",
 )
 
 
@@ -129,3 +130,35 @@ def test_a_stale_security_table_fails(tree: Path) -> None:
     assert _script().problems(tree) == [
         "SECURITY.md: latest supported version is 0.0.1"
     ]
+
+
+def test_a_camt053_floor_below_the_release_fails(tree: Path) -> None:
+    """The suite releases core first at one version: a floor below it lets
+    an older core, with its older advisory floors, resolve."""
+    v = _version(tree)
+    _rewrite(
+        tree / "pyproject.toml",
+        f'"camt053 >= {v}, < 1"',
+        '"camt053 >= 0.0.20, < 1"',
+    )
+    assert _script().problems(tree) == [
+        f"pyproject.toml: camt053>=0.0.20, the suite is at {v}"
+    ]
+
+
+def test_a_stale_runtime_in_floor_fails(tree: Path) -> None:
+    v = _version(tree)
+    _rewrite(
+        tree / "requirements/runtime.in",
+        f"camt053>={v},<1",
+        "camt053>=0.0.20,<1",
+    )
+    assert _script().problems(tree) == [
+        f"requirements/runtime.in: camt053>=0.0.20, the suite is at {v}"
+    ]
+
+
+def test_a_missing_camt053_floor_fails(tree: Path) -> None:
+    v = _version(tree)
+    _rewrite(tree / "pyproject.toml", f'"camt053 >= {v}, < 1"', '"camt053"')
+    assert _script().problems(tree) == ["pyproject.toml: no camt053>= floor"]

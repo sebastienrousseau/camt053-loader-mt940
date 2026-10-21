@@ -4,4 +4,4 @@
 # built wheel installs with --no-deps on top of it, so the SBOM lists
 # exactly what a user's install resolves today.
 # Regenerate with: make pip-compile
-camt053>=0.0.20,<1
+camt053>=0.0.23,<1

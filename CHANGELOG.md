@@ -56,7 +56,13 @@ documentation standard.
 
 ### Changed
 
-- Requires `camt053 >= 0.0.20` (was `>= 0.0.16`), the newest core release.
+- **Requires `camt053` 0.0.23 or newer** (was 0.0.16), still below 1. The
+  suite releases core first at one version, and core 0.0.23 is the first
+  to floor its advised dependencies (`fastapi` 0.109.1 for PYSEC-2024-38,
+  `starlette` 1.3.1, `cryptography` 50.0.0 and others); a lower floor here
+  let an older core resolve, and an affected `fastapi` with it.
+  `scripts/verify_versions.py` now fails when the floor in
+  `pyproject.toml` or `requirements/*.in` is not this version.
 - `parse_mt940` is split into helpers under the complexity ceilings; no
   behaviour change beyond the fix above.
 - Release workflow: every action pinned by commit SHA, build tooling from
@@ -82,9 +88,9 @@ documentation standard.
 - OpenSSF Scorecard, DCO, "Version sources agree" and Complexity workflows
   and jobs. `scripts/verify_versions.py` checks `pyproject.toml`,
   `__version__`, this changelog, `CITATION.cff`, `releases/`, the README
-  callout and `SECURITY.md`. `scripts/check_complexity.py` holds cyclomatic
-  10, cognitive 15, Halstead 30 and 60 lines per function against an empty
-  baseline.
+  callout, `SECURITY.md` and the `camt053` floor.
+  `scripts/check_complexity.py` holds cyclomatic 10, cognitive 15, Halstead
+  30 and 60 lines per function against an empty baseline.
 - `reuse lint` compliance (`LICENSES/`, `REUSE.toml`), `CITATION.cff`,
   Dependabot version updates, a pull request template, issue templates,
   `CODEOWNERS`, `CODE_OF_CONDUCT.md`, `DEVELOPMENT.md`, a `Makefile`, and
