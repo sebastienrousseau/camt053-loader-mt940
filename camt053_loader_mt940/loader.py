@@ -1,5 +1,5 @@
-# SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2023-2026 Sebastien Rousseau. All rights reserved.
+# SPDX-FileCopyrightText: 2023-2026 Sebastien Rousseau <sebastian.rousseau@gmail.com>
+# SPDX-License-Identifier: Apache-2.0 OR MIT
 
 """MT940 → camt.053 ParsedDocument loader.
 
@@ -28,6 +28,7 @@ mapped to an :class:`~camt053.models.Entry` with
 
 from __future__ import annotations
 
+import datetime
 import re
 from collections.abc import Iterator
 
@@ -74,10 +75,15 @@ _BALANCE_TAG_TO_TYPE = {
 # chars, optionally followed by a single letter (e.g. 60F, 28C).
 _FIELD_HEAD_RE = re.compile(r"^:(\d{2}[A-Z]?):", re.MULTILINE)
 
+# An MT940 amount: at least one integer digit, then at most one decimal
+# comma and its fraction ("1000,00", "1000,", "7"). A looser [\d,]+ let
+# "1,2,3" and "," through as the non-numbers "1.2.3" and ".".
+_AMOUNT = r"\d+(?:,\d*)?"
+
 # :60F:C240621EUR1000,00
 #       ^DC ^YYMMDD ^CCY ^Amount
 _BALANCE_RE = re.compile(
-    r"^(?P<dc>C|D)(?P<date>\d{6})(?P<ccy>[A-Z]{3})(?P<amt>[\d,]+)$"
+    rf"^(?P<dc>C|D)(?P<date>\d{{6}})(?P<ccy>[A-Z]{{3}})(?P<amt>{_AMOUNT})$"
 )
 
 # :61:2406210621D1000,00N123ABC//REF1
@@ -88,7 +94,7 @@ _LINE_RE = re.compile(
     r"(?P<bdate>\d{4})?"
     r"(?P<dc>RC|RD|C|D)"
     r"(?P<fund_code>[A-Z])?"
-    r"(?P<amt>[\d,]+)"
+    rf"(?P<amt>{_AMOUNT})"
     r"(?P<txcode>[A-Z][A-Z0-9]{3})"
     r"(?P<rest>.*)$"
 )
@@ -130,7 +136,7 @@ def _parse_balance(value: str, tag: str) -> Balance:
         amount=match.group("amt").replace(",", "."),
         currency=match.group("ccy"),
         credit_debit_indicator=("CRDT" if match.group("dc") == "C" else "DBIT"),
-        date=_format_yymmdd(match.group("date")),
+        date=_format_yymmdd(match.group("date"), tag),
     )
 
 
@@ -152,7 +158,7 @@ def _parse_entry(value: str) -> Entry:
         booking_date=_format_yymmdd_with_year_hint(
             match.group("bdate"), match.group("vdate")
         ),
-        value_date=_format_yymmdd(match.group("vdate")),
+        value_date=_format_yymmdd(match.group("vdate"), "61"),
         account_servicer_ref=customer_ref.strip() or None,
         reversal_indicator=is_reversal,
     )
@@ -183,31 +189,55 @@ def _parse_account(value: str) -> Account:
     )
 
 
-def _format_yymmdd(value: str) -> str:
+def _format_yymmdd(value: str, tag: str) -> str:
     """Format a 6-char ``YYMMDD`` date as ISO ``YYYY-MM-DD``.
 
     Years are interpreted with a sliding window: 00-79 → 20YY, 80-99 →
     19YY. This matches MT940 industry practice and is correct for any
     real statement date in the 1980-2079 range.
+
+    Raises:
+        ValueError: If the date does not exist (``000000``, 30 February),
+            naming ``tag``.
     """
     year = int(value[0:2])
     century = 2000 if year < 80 else 1900
-    return f"{century + year:04d}-{value[2:4]}-{value[4:6]}"
+    iso = f"{century + year:04d}-{value[2:4]}-{value[4:6]}"
+    try:
+        datetime.date.fromisoformat(iso)
+    except ValueError:
+        raise ValueError(f"Invalid date {value!r} in :{tag}:") from None
+    return iso
 
 
 def _format_yymmdd_with_year_hint(
     booking_mmdd: str | None,
     value_yymmdd: str,
 ) -> str | None:
-    """Format the booking date, borrowing the year from the value date.
+    """Format the booking date, inferring its year from the value date.
 
     MT940 :61: lines carry a 6-char value date (YYMMDD) and an
-    optional 4-char booking date (MMDD); the booking date inherits
-    its year from the value date.
+    optional 4-char booking date (MMDD). The booking date takes the
+    year, of the value date's year and the one either side, that puts
+    it nearest the value date: a 2 January booking of a 31 December
+    value date belongs to the next year, not the same one.
+
+    Raises:
+        ValueError: If either date does not exist, naming ``:61:``.
     """
     if booking_mmdd is None:
         return None
-    return _format_yymmdd(value_yymmdd[0:2] + booking_mmdd)
+    value = datetime.date.fromisoformat(_format_yymmdd(value_yymmdd, "61"))
+    month, day = int(booking_mmdd[:2]), int(booking_mmdd[2:])
+    candidates = []
+    for year in (value.year - 1, value.year, value.year + 1):
+        try:
+            candidates.append(datetime.date(year, month, day))
+        except ValueError:
+            continue
+    if not candidates:
+        raise ValueError(f"Invalid date {booking_mmdd!r} in :61:")
+    return min(candidates, key=lambda date: abs(date - value)).isoformat()
 
 
 # ─── Errors ─────────────────────────────────────────────────────────────────
@@ -290,15 +320,17 @@ def parse_mt940(text: str, *, strict: bool = True) -> ParsedDocument:
     Returns:
         A :class:`~camt053.models.ParsedDocument` whose
         ``message_type`` is ``"camt.053.001.08"`` (the closest direct
-        camt.053 equivalent of an MT940 final-statement message).
+        camt.053 equivalent of an MT940 final-statement message), with one
+        :class:`~camt053.models.Statement` per ``:20:`` in the payload, in
+        file order. ``msg_id`` is the first statement's ``:20:``.
 
     Raises:
-        MissingMandatoryFieldError: If ``:25:`` is absent or identifies
-            no account, and ``strict`` is ``True``. A subclass of
-            :class:`ValueError`.
-        ValueError: If ``:20:`` is absent, or a balance or statement line
-            does not match the expected format. The message identifies
-            the offending tag.
+        MissingMandatoryFieldError: If any statement's ``:25:`` is absent
+            or identifies no account, and ``strict`` is ``True``. A
+            subclass of :class:`ValueError`.
+        ValueError: If ``:20:`` is absent or empty, or a balance or
+            statement line does not match the expected format. The message
+            identifies the offending tag.
 
     Note:
         ``strict`` currently governs ``:25:`` only. ``:28C:``, ``:60F:``
@@ -307,57 +339,93 @@ def parse_mt940(text: str, *, strict: bool = True) -> ParsedDocument:
         than a decision, and widening the check is a one-line change to
         :data:`_MANDATORY_UNDER_STRICT`.
     """
-    statement = Statement()
-    msg_id: str | None = None
-    last_entry: Entry | None = None
-    seen: set[str] = set()
-
-    for tag, value in _iter_fields(text):
-        seen.add(tag)
-        if tag == "20":
-            msg_id = value or None
-        elif tag == "25":
-            statement.account = _parse_account(value)
-        elif tag == "28C":
-            statement.electronic_seq_nb = value
-            statement.id = value
-        elif tag in {"60F", "60M", "62F", "62M", "64", "65"}:
-            statement.balances.append(_parse_balance(value, tag))
-        elif tag == "61":
-            entry = _parse_entry(value)
-            statement.entries.append(entry)
-            last_entry = entry
-        elif tag == "86":
-            _attach_additional_info(last_entry, value)
-        # Unknown tags are silently ignored so future SWIFT additions
-        # do not break parsing; the loader follows Postel's law here.
-
-    if msg_id is None:
-        raise ValueError("MT940 payload missing required :20: reference")
-
-    if strict:
-        for tag, description in _MANDATORY_UNDER_STRICT:
-            if tag not in seen:
-                raise MissingMandatoryFieldError(
-                    tag, description, "it is absent"
-                )
-        # A bare ``:25:`` is present but identifies nothing. The BIC alone
-        # does not count: it names the servicer, not the account, and a
-        # statement that says which bank but not which account reconciles
-        # against just as little as one that says neither.
-        account = statement.account
-        if account is None or not (account.iban or account.other_id):
-            raise MissingMandatoryFieldError(
-                "25",
-                "Account Identification",
-                "it carries no account number",
-            )
+    statements: list[Statement] = []
+    references: list[str] = []
+    for fields in _statement_blocks(_iter_fields(text)):
+        reference, statement = _parse_statement(fields)
+        if reference is None:
+            raise ValueError("MT940 payload missing required :20: reference")
+        if strict:
+            _require_account(statement, {tag for tag, _ in fields})
+        references.append(reference)
+        statements.append(statement)
 
     return ParsedDocument(
         message_type="camt.053.001.08",
-        msg_id=msg_id,
-        statements=[statement],
+        msg_id=references[0],
+        statements=statements,
     )
+
+
+def _statement_blocks(
+    fields: Iterator[tuple[str, str]],
+) -> list[list[tuple[str, str]]]:
+    """Group fields into one block per statement, each opened by ``:20:``.
+
+    A file may carry several statements back to back, one per account or
+    per day. Each ``:20:`` after the first starts a new block; fields before
+    the first ``:20:`` stay with it. There is always at least one block, so
+    an empty payload still reports its missing ``:20:``.
+    """
+    blocks: list[list[tuple[str, str]]] = [[]]
+    has_reference = False
+    for tag, value in fields:
+        if tag == "20" and has_reference:
+            blocks.append([])
+        has_reference = has_reference or tag == "20"
+        blocks[-1].append((tag, value))
+    return blocks
+
+
+def _parse_statement(
+    fields: list[tuple[str, str]],
+) -> tuple[str | None, Statement]:
+    """Build one statement from its block; return its ``:20:`` and itself."""
+    statement = Statement()
+    reference: str | None = None
+    last_entry: Entry | None = None
+    for tag, value in fields:
+        if tag == "20":
+            reference = value or None
+        elif tag == "61":
+            last_entry = _parse_entry(value)
+            statement.entries.append(last_entry)
+        elif tag == "86":
+            _attach_additional_info(last_entry, value)
+        else:
+            _apply_statement_field(statement, tag, value)
+    return reference, statement
+
+
+def _apply_statement_field(statement: Statement, tag: str, value: str) -> None:
+    """Apply a statement-level field (``:25:``, ``:28C:``, balances)."""
+    if tag == "25":
+        statement.account = _parse_account(value)
+    elif tag == "28C":
+        statement.electronic_seq_nb = value
+        statement.id = value
+    elif tag in _BALANCE_TAG_TO_TYPE:
+        statement.balances.append(_parse_balance(value, tag))
+    # Unknown tags are silently ignored so future SWIFT additions
+    # do not break parsing; the loader follows Postel's law here.
+
+
+def _require_account(statement: Statement, seen: set[str]) -> None:
+    """Raise unless ``:25:`` was present and names an account."""
+    for tag, description in _MANDATORY_UNDER_STRICT:
+        if tag not in seen:
+            raise MissingMandatoryFieldError(tag, description, "it is absent")
+    # A bare ``:25:`` is present but identifies nothing. The BIC alone
+    # does not count: it names the servicer, not the account, and a
+    # statement that says which bank but not which account reconciles
+    # against just as little as one that says neither.
+    account = statement.account
+    if account is None or not (account.iban or account.other_id):
+        raise MissingMandatoryFieldError(
+            "25",
+            "Account Identification",
+            "it carries no account number",
+        )
 
 
 def _attach_additional_info(entry: Entry | None, value: str) -> None:

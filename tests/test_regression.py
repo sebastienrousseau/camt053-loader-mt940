@@ -1,5 +1,5 @@
-# SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2023-2026 Sebastien Rousseau. All rights reserved.
+# SPDX-FileCopyrightText: 2023-2026 Sebastien Rousseau <sebastian.rousseau@gmail.com>
+# SPDX-License-Identifier: Apache-2.0 OR MIT
 """Regression tests: behaviour the documentation promises, pinned.
 
 `test_loader.py` covers whether the parser is correct. This file covers
@@ -120,6 +120,96 @@ class TestDocumentedShape:
             "msg_id",
             "statements",
         }
+
+
+class TestAmountsAreNumbers:
+    """Documented: input outside the grammar is a ``ValueError`` (SECURITY.md).
+
+    An MT940 amount is digits with one decimal comma. ``[\\d,]+`` let
+    ``1,2,3`` through as the amount ``"1.2.3"`` and a bare ``,`` as ``"."``;
+    neither is a number, and ``amount_decimal`` came back ``None``.
+    """
+
+    @pytest.mark.parametrize("amount", ["1,2,3", ",", ",5", "1,,0"])
+    def test_a_malformed_balance_amount_is_rejected(self, amount: str) -> None:
+        payload = STATEMENT.replace("C260620EUR1000,00", f"C260620EUR{amount}")
+        with pytest.raises(ValueError, match=":60F:"):
+            parse_mt940(payload)
+
+    @pytest.mark.parametrize("amount", ["1,2,3", ",", ",5", "1,,0"])
+    def test_a_malformed_entry_amount_is_rejected(self, amount: str) -> None:
+        payload = STATEMENT.replace("CR500,00NMSC", f"CR{amount}NMSC")
+        with pytest.raises(ValueError, match=":61:"):
+            parse_mt940(payload)
+
+    @pytest.mark.parametrize(
+        ("amount", "expected"),
+        [("1000,00", "1000.00"), ("1000,", "1000."), ("7", "7")],
+    )
+    def test_well_formed_amounts_still_parse(
+        self, amount: str, expected: str
+    ) -> None:
+        payload = STATEMENT.replace("C260620EUR1000,00", f"C260620EUR{amount}")
+        balance = parse_mt940(payload).statements[0].balances[0]
+        assert balance.amount == expected
+
+
+class TestDatesExist:
+    """Documented: input outside the grammar is a ``ValueError`` (SECURITY.md).
+
+    Six digits were enough: ``000000`` became the date ``2000-00-00`` and
+    ``260230`` became 30 February. A date that does not exist cannot be
+    booked, so it is rejected at the boundary, naming the tag.
+    """
+
+    @pytest.mark.parametrize("date", ["000000", "260230", "261301", "260600"])
+    def test_an_impossible_balance_date_is_rejected(self, date: str) -> None:
+        payload = STATEMENT.replace("C260620EUR1000,00", f"C{date}EUR1000,00")
+        with pytest.raises(ValueError, match=":60F:"):
+            parse_mt940(payload)
+
+    @pytest.mark.parametrize("date", ["000000", "260230", "261301"])
+    def test_an_impossible_value_date_is_rejected(self, date: str) -> None:
+        payload = STATEMENT.replace(":61:2606210621CR", f":61:{date}0621CR")
+        with pytest.raises(ValueError, match=":61:"):
+            parse_mt940(payload)
+
+    @pytest.mark.parametrize("mmdd", ["0000", "0230", "1301"])
+    def test_an_impossible_booking_date_is_rejected(self, mmdd: str) -> None:
+        payload = STATEMENT.replace(":61:2606210621CR", f":61:260621{mmdd}CR")
+        with pytest.raises(ValueError, match=":61:"):
+            parse_mt940(payload)
+
+    def test_a_leap_day_is_a_real_date(self) -> None:
+        payload = STATEMENT.replace("C260620EUR1000,00", "C280229EUR1000,00")
+        balance = parse_mt940(payload).statements[0].balances[0]
+        assert balance.date == "2028-02-29"
+
+
+class TestBookingDateAcrossTheYearEnd:
+    """A :61: booking date is MMDD, and its year is inferred.
+
+    Borrowing the value date's year put a 2 January booking of a
+    31 December value date a year early, on 2026-01-02. The booking date
+    takes the year that puts it nearest the value date.
+    """
+
+    @staticmethod
+    def _booking(line: str) -> str | None:
+        payload = STATEMENT.replace(":61:2606210621CR", f":61:{line}CR")
+        return parse_mt940(payload).statements[0].entries[0].booking_date
+
+    def test_a_january_booking_of_a_december_value_is_next_year(self) -> None:
+        assert self._booking("2612310102") == "2027-01-02"
+
+    def test_a_december_booking_of_a_january_value_is_last_year(self) -> None:
+        assert self._booking("2701021231") == "2026-12-31"
+
+    def test_the_same_month_keeps_the_value_year(self) -> None:
+        assert self._booking("2606210621") == "2026-06-21"
+
+    def test_a_leap_day_booking_finds_its_leap_year(self) -> None:
+        assert self._booking("2802280229") == "2028-02-29"
 
 
 class TestMandatoryFields:
@@ -262,6 +352,68 @@ class TestMandatoryFields:
             parse_mt940(STATEMENT + "\n\n  \n").to_dict()
             == parse_mt940(STATEMENT).to_dict()
         )
+
+
+SECOND = """:20:STMT-REGRESSION-2
+:25:NWBKGB2LXXX/GB29NWBK60161331926819
+:28C:43/1
+:60F:C260621EUR200,00
+:86:Narrative before any :61: of this statement
+:61:2606220622DR50,00NTRFREF2//SREF2
+:62F:C260622EUR150,00
+"""
+
+
+class TestOneStatementPerTag20:
+    """Documented: ``document.statements`` holds "one per :20: block".
+
+    A file carrying several statements (one per account, or one per day)
+    used to come back as a single statement: every entry and balance under
+    the last ``:25:`` account, ``msg_id`` from the last ``:20:``.
+    """
+
+    def test_each_tag_20_starts_its_own_statement(self) -> None:
+        document = parse_mt940(STATEMENT + SECOND)
+        assert [s.id for s in document.statements] == ["42/1", "43/1"]
+
+    def test_entries_stay_with_their_own_account(self) -> None:
+        first, second = parse_mt940(STATEMENT + SECOND).statements
+        assert first.account.iban == "DE89370400440532013000"
+        assert [e.reference for e in first.entries] == ["REF1"]
+        assert second.account.iban == "GB29NWBK60161331926819"
+        assert [e.reference for e in second.entries] == ["REF2"]
+
+    def test_balances_stay_with_their_own_statement(self) -> None:
+        first, second = parse_mt940(STATEMENT + SECOND).statements
+        assert [b.amount for b in first.balances] == ["1000.00", "1500.00"]
+        assert [b.amount for b in second.balances] == ["200.00", "150.00"]
+
+    def test_narrative_never_crosses_into_the_previous_statement(
+        self,
+    ) -> None:
+        """An :86: before a statement's first :61: belongs to no entry."""
+        first, second = parse_mt940(STATEMENT + SECOND).statements
+        assert [d.additional_info for d in first.entries[0].details] == [
+            "Payment for invoice 123"
+        ]
+        assert second.entries[0].details == []
+
+    def test_msg_id_is_the_first_reference(self) -> None:
+        assert parse_mt940(STATEMENT + SECOND).msg_id == "STMT-REGRESSION-1"
+
+    def test_strict_checks_every_statement(self) -> None:
+        no_account = SECOND.replace(
+            ":25:NWBKGB2LXXX/GB29NWBK60161331926819\n", ""
+        )
+        with pytest.raises(MissingMandatoryFieldError):
+            parse_mt940(STATEMENT + no_account)
+
+    def test_an_empty_reference_in_a_later_statement_is_rejected(
+        self,
+    ) -> None:
+        empty = SECOND.replace(":20:STMT-REGRESSION-2", ":20:")
+        with pytest.raises(ValueError, match=":20:"):
+            parse_mt940(STATEMENT + empty)
 
 
 class TestShippedArtefactsStillRun:

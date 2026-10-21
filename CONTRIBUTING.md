@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: 2026 Sebastien Rousseau <sebastian.rousseau@gmail.com> -->
+<!-- SPDX-License-Identifier: Apache-2.0 OR MIT -->
+
 # Contributing
 
 Thanks for looking. This package is small on purpose: it turns an MT940
@@ -6,16 +9,15 @@ already understands, and nothing else.
 
 ## Before you open a pull request
 
-Everything CI checks, you can run locally:
+Everything CI checks, you can run locally. Set up as in
+[`DEVELOPMENT.md`](DEVELOPMENT.md), then:
 
 ```sh
-pip install -e ".[dev]"
-pytest                                        # tests + the coverage gate
-ruff check camt053_loader_mt940/ tests/ examples/ benches/
-ruff format --check camt053_loader_mt940/ tests/ examples/ benches/
-mypy camt053_loader_mt940/
-python benches/bench_parse_mt940.py --quick   # the benchmark still runs
+make check
 ```
+
+Every commit must be signed off (`git commit -s`): the DCO check fails a
+pull request otherwise. See [`DCO.txt`](DCO.txt) for what that certifies.
 
 `pytest` fails below **100% branch coverage**. That is not a stretch goal
 here — the package is a few hundred lines, and the branches that go untested
@@ -45,11 +47,12 @@ will tell you and a month-end statement file will.
 
 ## Versioning
 
-The version is restated in `pyproject.toml` and
-`camt053_loader_mt940/__init__.py`. Change both, add a `CHANGELOG.md` entry,
-and the conformance tests will confirm they agree — they exist because the
-suite has already published a release whose `__version__` reported the
-previous one.
+The version is restated in `pyproject.toml`,
+`camt053_loader_mt940/__init__.py`, `CITATION.cff`, the README's
+latest-release callout, a `CHANGELOG.md` heading and
+`releases/v<version>.md`. `make verify-versions` fails until they all
+agree. It exists because this package has already published a release
+whose `__version__` reported the previous one.
 
 **Versions increment by 0.0.1.** `0.1.0` follows `0.0.999`, not `0.0.9`.
 

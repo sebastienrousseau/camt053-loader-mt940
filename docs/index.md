@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: 2026 Sebastien Rousseau <sebastian.rousseau@gmail.com> -->
+<!-- SPDX-License-Identifier: Apache-2.0 OR MIT -->
+
 # camt053-loader-mt940
 
 Turn a SWIFT **MT940** customer statement into the same object the rest of the
@@ -139,7 +142,7 @@ recorded gap rather than a decision.
 
 | MT940 tag | Meaning | Where it lands |
 |---|---|---|
-| `:20:` | Transaction reference | `document.msg_id` |
+| `:20:` | Transaction reference | starts a statement; the first is `document.msg_id` |
 | `:25:` | Account identification | `statement.account.iban`, `.servicer_bic` |
 | `:28C:` | Statement / sequence number | `statement.id`, `.electronic_seq_nb` |
 | `:60F:` | Opening balance | `statement.balances[0]` |
@@ -178,7 +181,9 @@ rotting.
 
 ## Errors
 
-`ValueError` carries the field that failed:
+`ValueError` carries the field that failed. Since 0.0.23 that includes an
+amount that is not a number (`1,2,3`, a bare `,`) and a date that does not
+exist (`000000`, 30 February):
 
 ```python
 try:

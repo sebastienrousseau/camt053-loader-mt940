@@ -1,4 +1,5 @@
-<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Sebastien Rousseau <sebastian.rousseau@gmail.com> -->
+<!-- SPDX-License-Identifier: Apache-2.0 OR MIT -->
 
 # Security Policy
 
@@ -12,8 +13,8 @@ the latest major. While pre-`1.0`, that means **the latest released
 
 | Version | Status | Receives security fixes? |
 | :--- | :--- | :--- |
-| `0.0.14` (latest) | Current | ✅ Yes |
-| `0.0.13` | Prior | ✅ Yes |
+| `0.0.23` (latest) | Current | ✅ Yes |
+| `0.0.20` | Prior | ✅ Yes |
 
 ## Reporting a vulnerability
 
@@ -49,7 +50,7 @@ rejected with a `ValueError`.
 | **Path traversal** | The loader does not touch the filesystem. Callers pass strings, not paths. |
 | **Resource exhaustion** | Parsing is O(input size). Callers concerned about hostile input should impose an upstream byte cap. |
 | **Bank-specific `:86:` sub-fields** | Value is preserved verbatim as `additional_info`. The loader does not interpret or execute any embedded content. |
-| **Dependency CVEs** | `camt053 >= 0.0.5, < 1` is the only runtime dep. Pinned via PyPI and audited by GitHub Dependabot. |
+| **Dependency CVEs** | `camt053 >= 0.0.23, < 1` is the only runtime dependency. CI audits the resolved tree with `pip-audit` on every pull request, and Dependabot watches it. |
 
 ### Cryptography status
 

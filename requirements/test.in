@@ -1,0 +1,17 @@
+# SPDX-FileCopyrightText: 2026 Sebastien Rousseau <sebastian.rousseau@gmail.com>
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+# Runtime + test dependencies for the CI "test" job, hash-pinned in
+# test.txt so every pip install in .github/workflows is pinned (OpenSSF
+# Scorecard Pinned-Dependencies). The package itself is imported from the
+# repository root, so no unpinnable "pip install -e ." is needed.
+# Regenerate with: make pip-compile
+camt053>=0.0.23,<1
+pytest>=9.0.3,<10
+pytest-cov>=6.0.0,<8
+interrogate>=1.7
+packaging>=23
+# tests/test_fuzz.py: property-based fuzzing of parse_mt940.
+hypothesis>=6.100
+tomli>=2 ; python_version < "3.11"
+# tests/test_check_complexity.py imports the gate, so its tools are here too.
+-r complexity.in

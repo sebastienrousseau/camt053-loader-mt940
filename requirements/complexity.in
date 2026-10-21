@@ -1,0 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Sebastien Rousseau <sebastian.rousseau@gmail.com>
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+# Complexity ceilings for the CI "complexity" job
+# (scripts/check_complexity.py and complexipy).
+# Regenerate with: make pip-compile
+radon==6.0.1
+complexipy==8.1.0

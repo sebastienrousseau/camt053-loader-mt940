@@ -1,5 +1,5 @@
-# SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2023-2026 Sebastien Rousseau. All rights reserved.
+# SPDX-FileCopyrightText: 2023-2026 Sebastien Rousseau <sebastian.rousseau@gmail.com>
+# SPDX-License-Identifier: Apache-2.0 OR MIT
 
 """MT940 → camt.053 loader for the camt053 suite.
 
@@ -21,6 +21,6 @@ from camt053_loader_mt940.loader import (
     parse_mt940,
 )
 
-__version__ = "0.0.20"
+__version__ = "0.0.23"
 
 __all__ = ["MissingMandatoryFieldError", "parse_mt940", "__version__"]

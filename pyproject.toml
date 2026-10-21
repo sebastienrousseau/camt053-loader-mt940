@@ -1,6 +1,9 @@
+# SPDX-FileCopyrightText: 2026 Sebastien Rousseau <sebastian.rousseau@gmail.com>
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+
 [project]
 name = "camt053-loader-mt940"
-version = "0.0.20"
+version = "0.0.23"
 description = "Convert legacy SWIFT MT940 bank statements to camt.053 ParsedDocument."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -19,6 +22,7 @@ classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Financial and Insurance Industry",
     "License :: OSI Approved :: Apache Software License",
+    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
@@ -30,7 +34,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "camt053 >= 0.0.16, < 1",
+    "camt053 >= 0.0.23, < 1",
 ]
 
 [project.optional-dependencies]
@@ -45,6 +49,10 @@ dev = [
     # needed there, or the conformance gate simply does not run on 3.10.
     'tomli >= 2 ; python_version < "3.11"',
     "packaging >= 23",
+    "hypothesis >= 6.100",
+    # scripts/check_complexity.py and its tests.
+    "radon >= 6.0.1",
+    "complexipy >= 8.1",
 ]
 
 [project.urls]
@@ -113,4 +121,10 @@ strict = true
 
 [[tool.mypy.overrides]]
 module = "camt053.*"
+ignore_missing_imports = true
+
+# radon ships no type information (no py.typed, no stubs). It is used only
+# by scripts/check_complexity.py, whose own code is still checked strictly.
+[[tool.mypy.overrides]]
+module = "radon.*"
 ignore_missing_imports = true
