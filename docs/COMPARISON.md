@@ -16,7 +16,7 @@ wheel's source and metadata.
 | Multi-statement files | One `Statement` per `:20:`, always | `parse` merges into one `Transactions`; `parse_statements` returns one per `:20:` |
 | Missing `:25:` | Rejected by default (`MissingMandatoryFieldError`); `strict=False` accepts it | Not checked here |
 | Runtime dependencies | `camt053` | None (only optional extras) |
-| Python | 3.10+ | 3.10+ |
+| Python | 3.11+ | 3.10+ |
 | Licence | Apache-2.0 OR MIT | BSD-3-Clause |
 
 ## When to pick which

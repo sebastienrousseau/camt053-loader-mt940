@@ -5,7 +5,7 @@
 
 ## Toolchain
 
-Python 3.10 or newer ([toolchain policy](docs/POLICIES.md)). CI installs
+Python 3.11 or newer ([toolchain policy](docs/POLICIES.md)). CI installs
 every tool from hash-pinned files under `requirements/`; do the same
 locally so you run what CI runs:
 
@@ -22,7 +22,7 @@ hashes.
 
 | CI job | Local command |
 | :--- | :--- |
-| Test (3.10 to 3.14) | `make test` (pytest, 100% line and branch coverage; interrogate, 100% docstrings) |
+| Test (3.11 to 3.14) | `make test` (pytest, 100% line and branch coverage; interrogate, 100% docstrings) |
 | Benchmark and examples | `make benchmark examples` |
 | Lint & Type Check | `make lint type-check` (ruff, ruff format, `reuse lint`, mypy strict) |
 | Complexity | `make complexity` (needs `requirements/complexity.txt`) |

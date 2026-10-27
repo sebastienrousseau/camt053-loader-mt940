@@ -49,7 +49,7 @@ pip-compile: ## Regenerate hash-pinned requirements/*.txt from requirements/*.in
 		[ "$$f" = requirements/fuzz.in ] && continue; \
 		echo "compiling $$f"; \
 		uv pip compile --quiet --generate-hashes --universal \
-			--python-version 3.10 "$$f" -o "$${f%.in}.txt"; \
+			--python-version 3.11 "$$f" -o "$${f%.in}.txt"; \
 	done
 	@echo "compiling requirements/fuzz.in (Linux x86_64, Atheris wheels only)"
 	@uv pip compile --quiet --generate-hashes --python-platform x86_64-manylinux_2_17 \
