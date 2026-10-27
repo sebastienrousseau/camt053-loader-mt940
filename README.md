@@ -66,9 +66,9 @@
 pip install camt053-loader-mt940
 ```
 
-> **Latest release: v0.0.23**: one `Statement` per `:20:` in a
-> multi-statement file, malformed amounts and impossible dates rejected,
-> released in lockstep with the camt053 suite, for Python 3.10+.
+> **Latest release: v0.0.24**: Python 3.11 or newer, released in
+> lockstep with the camt053 suite at 0.0.24. Parsing is unchanged from
+> 0.0.23.
 
 The package pulls in [`camt053`][core] (0.0.23 or newer, below 1) and nothing
 else. There is no command-line entry point: it is a library.

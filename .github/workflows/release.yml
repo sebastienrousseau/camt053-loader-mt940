@@ -80,7 +80,7 @@ jobs:
             "$RUNNER_TEMP/target/bin/python"
 
       # The title is the project name and the bare version, never the tag
-      # (camt053-loader-mt940 0.0.23, not v0.0.23). The body starts as the
+      # (camt053-loader-mt940 0.0.24, not v0.0.24). The body starts as the
       # committed release notes; the release handover script then rewrites
       # it with the asset checksums once every asset is attached.
       - name: Create GitHub release

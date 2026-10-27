@@ -13,8 +13,8 @@ the latest major. While pre-`1.0`, that means **the latest released
 
 | Version | Status | Receives security fixes? |
 | :--- | :--- | :--- |
-| `0.0.23` (latest) | Current | ✅ Yes |
-| `0.0.20` | Prior | ✅ Yes |
+| `0.0.24` (latest) | Current | ✅ Yes |
+| `0.0.23` | Prior | ✅ Yes |
 
 ## Reporting a vulnerability
 

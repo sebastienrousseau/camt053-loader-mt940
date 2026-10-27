@@ -12,7 +12,10 @@ suite (`camt053`, `camt053-lsp`, `camt053-mcp`, `camt053-loader-mt940`,
 `camt053-loader-mt942`, `camt053-writer-xlsx`), which releases every member
 together at one version, core first.
 
-## [Unreleased]
+## [0.0.24] - 2026-10-27
+
+The camt053 suite's 0.0.24 release, core first. Every member drops
+Python 3.10 and requires the 0.0.24 core. Parsing is unchanged.
 
 ### Removed
 
