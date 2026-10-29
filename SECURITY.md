@@ -50,7 +50,7 @@ rejected with a `ValueError`.
 | **Path traversal** | The loader does not touch the filesystem. Callers pass strings, not paths. |
 | **Resource exhaustion** | Parsing is O(input size). Callers concerned about hostile input should impose an upstream byte cap. |
 | **Bank-specific `:86:` sub-fields** | Value is preserved verbatim as `additional_info`. The loader does not interpret or execute any embedded content. |
-| **Dependency CVEs** | `camt053 >= 0.0.24, < 1` is the only runtime dependency. CI audits the resolved tree with `pip-audit` on every pull request, and Dependabot watches it. |
+| **Dependency CVEs** | `camt053 >= 0.0.25, < 1` is the only runtime dependency. CI audits the resolved tree with `pip-audit` on every pull request, and Dependabot watches it. |
 
 ### Cryptography status
 

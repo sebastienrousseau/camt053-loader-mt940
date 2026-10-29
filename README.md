@@ -69,7 +69,7 @@ pip install camt053-loader-mt940
 > **Latest release: v0.0.25**: released in lockstep with the camt053
 > suite at 0.0.25. Parsing is unchanged from 0.0.24.
 
-The package pulls in [`camt053`][core] (0.0.24 or newer, below 1) and nothing
+The package pulls in [`camt053`][core] (0.0.25 or newer, below 1) and nothing
 else. There is no command-line entry point: it is a library.
 
 ---
@@ -78,7 +78,7 @@ else. There is no command-line entry point: it is a library.
 
 - Python 3.11 or newer, tested in CI on 3.11, 3.12, 3.13 and 3.14 on
   Linux ([toolchain policy](docs/POLICIES.md)).
-- `camt053` 0.0.24 or newer on the 0.x line.
+- `camt053` 0.0.25 or newer on the 0.x line.
 - Pure Python, so any platform CPython runs on; CI exercises Linux only.
 
 ---
