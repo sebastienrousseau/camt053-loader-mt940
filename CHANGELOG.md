@@ -12,6 +12,19 @@ suite (`camt053`, `camt053-lsp`, `camt053-mcp`, `camt053-loader-mt940`,
 `camt053-loader-mt942`, `camt053-writer-xlsx`), which releases every member
 together at one version, core first.
 
+## [0.0.25] - 2026-10-29
+
+The camt053 suite's 0.0.25 release, core first. The suite moves
+together because camt053-mcp takes a development-tool update
+(Dependabot #147: pytest-asyncio 1.4.1, complexipy); parsing is
+unchanged.
+
+### Changed
+
+- Requires `camt053 >= 0.0.25, < 1` in `pyproject.toml` and
+  `requirements/{lint,runtime,test}.in`, and the hash-pinned
+  requirement files pin the published camt053 0.0.25.
+
 ## [0.0.24] - 2026-10-29
 
 The camt053 suite's 0.0.24 release, core first. Every member drops
