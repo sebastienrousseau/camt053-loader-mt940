@@ -3,7 +3,7 @@
 # Lint, format, type-check and licence tooling for the CI "lint" job.
 # camt053 is included so mypy --strict sees the real models.
 # Regenerate with: make pip-compile
-camt053>=0.0.23,<1
+camt053>=0.0.24,<1
 ruff==0.17.2
 mypy>=1.11,<3
 reuse[charset-normalizer]>=5.0
