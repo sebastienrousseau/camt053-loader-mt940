@@ -12,6 +12,27 @@ suite (`camt053`, `camt053-lsp`, `camt053-mcp`, `camt053-loader-mt940`,
 `camt053-loader-mt942`, `camt053-writer-xlsx`), which releases every member
 together at one version, core first.
 
+## [0.0.24] - 2026-10-29
+
+The camt053 suite's 0.0.24 release, core first. Every member drops
+Python 3.10 and requires the 0.0.24 core. Parsing is unchanged.
+
+### Removed
+
+- **Python 3.10 is no longer supported; the floor is 3.11.** This is a
+  decision for the whole camt053 suite: 3.10 reaches end of life in
+  October 2026, and current Hypothesis releases need 3.11. The CI matrix
+  is 3.11 to 3.14, ruff and mypy target 3.11, the `tomli` backport and
+  the 3.10 `tomllib` fallback in `scripts/check_suite_consistency.py` are
+  gone, and every hash-pinned `requirements/*.txt` is compiled for 3.11.
+  On 3.10, pip keeps resolving 0.0.23.
+
+### Changed
+
+- Requires `camt053 >= 0.0.24, < 1` in `pyproject.toml` and
+  `requirements/{lint,runtime,test}.in`, and the hash-pinned
+  requirement files pin the published camt053 0.0.24.
+
 ## [0.0.23] - 2026-10-20
 
 The camt053 suite's 0.0.23 release, which brings every member back to one

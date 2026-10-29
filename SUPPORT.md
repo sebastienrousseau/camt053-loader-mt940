@@ -86,8 +86,6 @@ Issues spanning multiple packages can be filed against `camt053`
 
 ## Supported versions
 
-| Version | Supported? |
-| :--- | :--- |
-| 0.0.1 (latest) | ✅ |
-
-Requires Python 3.10+ and `camt053 >= 0.0.5`.
+[SECURITY.md](SECURITY.md#supported-versions) lists the versions that
+receive fixes. Requires Python 3.11 or newer and the `camt053` release
+named under [Requirements](README.md#requirements).

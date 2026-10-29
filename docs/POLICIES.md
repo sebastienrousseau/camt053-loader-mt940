@@ -3,8 +3,8 @@
 
 # Toolchain policy
 
-Python 3.10 is the floor (`requires-python = ">=3.10"` in `pyproject.toml`),
-with Linux CI on 3.10, 3.11, 3.12, 3.13 and 3.14. The floor matches the
+Python 3.11 is the floor (`requires-python = ">=3.11"` in `pyproject.toml`),
+with Linux CI on 3.11, 3.12, 3.13 and 3.14. The floor matches the
 `camt053` core library, which this package depends on; it moves when the
 core's does, in the same family release, and the change is recorded in the
 changelog. No distro-system Python is supported.
