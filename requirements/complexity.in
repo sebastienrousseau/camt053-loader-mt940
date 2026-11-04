@@ -4,4 +4,4 @@
 # (scripts/check_complexity.py and complexipy).
 # Regenerate with: make pip-compile
 radon==6.0.1
-complexipy==8.1.0
+complexipy==8.3.0
