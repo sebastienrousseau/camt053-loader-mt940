@@ -4,7 +4,7 @@
 # camt053 is included so mypy --strict sees the real models.
 # Regenerate with: make pip-compile
 camt053>=0.0.26,<1
-ruff==0.17.4
+ruff==0.17.5
 mypy>=1.11,<3
 reuse[charset-normalizer]>=6.3.0
 # The complexity gate is type-checked with its own tools installed.
